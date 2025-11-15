@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()

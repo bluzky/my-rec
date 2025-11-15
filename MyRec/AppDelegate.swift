@@ -9,7 +9,7 @@ import Cocoa
 import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var statusBarController: StatusBarController?
+    // var statusBarController: StatusBarController? // Week 2
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (menu bar app only)

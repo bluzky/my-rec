@@ -1,6 +1,6 @@
+import AppKit
 import AVFoundation
 import ScreenCaptureKit
-import AppKit
 
 enum PermissionType {
     case screenRecording

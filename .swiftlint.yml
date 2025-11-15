@@ -1,10 +1,17 @@
 included:
-  - MyRec
+  - MyRec/MyRec
 
 excluded:
   - Pods
   - DerivedData
   - .build
+  - plan
+  - docs
+  - scripts
+  - .github
+  - .git
+  - .claude
+  - MyRec.xcodeproj
 
 opt_in_rules:
   - empty_count
