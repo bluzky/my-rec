@@ -52,6 +52,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = FF53D5792EC78CCD002EBBF3 /* Build configuration list for PBXNativeTarget "MyRec" */;
 			buildPhases = (
+				FF53D5882EC8606D002EBBF3 /* ShellScript */,
 				FF53D56A2EC78CCB002EBBF3 /* Sources */,
 				FF53D56B2EC78CCB002EBBF3 /* Frameworks */,
 				FF53D56C2EC78CCB002EBBF3 /* Resources */,
@@ -113,6 +114,26 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		FF53D5882EC8606D002EBBF3 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nif which swiftlint >/dev/null; then\n    swiftlint\n  else\n    echo \"warning: SwiftLint not installed\"\n  fi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FF53D56A2EC78CCB002EBBF3 /* Sources */ = {
