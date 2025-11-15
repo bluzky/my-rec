@@ -180,6 +180,46 @@
 *   **Task:** Integrate the `StatusBarController` into the `AppDelegate` to launch it with the app.
 *   **Task:** Write unit tests for menu state management and notification posting.
 
+---
+
+#### ✅ Day 6 Completion Summary
+
+**Status:** COMPLETED
+
+**Files Created:**
+- `MyRec/Extensions/Notification+Names.swift` - Public notification names for app-wide communication
+- `MyRec/Services/StatusBar/StatusBarController.swift` - Complete status bar controller with state management
+- `MyRecTests/Services/StatusBarControllerTests.swift` - Unit tests for notification system
+
+**Files Modified:**
+- `MyRec/AppDelegate.swift` - Added StatusBarController initialization with conditional imports
+- `Package.swift` - Added new files to MyRecCore target for proper module structure
+
+**Implementation Details:**
+- ✅ Complete menu bar integration with NSStatusBar
+- ✅ Dynamic menu state management (idle → recording → paused)
+- ✅ Icon changes based on state (record.circle ↔ record.circle.fill)
+- ✅ Notification-based architecture for loose coupling
+- ✅ Combine-based reactive state updates
+- ✅ Menu items: Record Screen, Pause/Resume, Stop Recording, Settings, Quit
+
+**Testing:**
+- ✅ 8/8 unit tests passing
+- ✅ Tests cover: notification names, notification posting, recording state transitions
+- ✅ Build verified on both SPM and Xcode
+
+**Challenges Solved:**
+1. **Module Import Issue**: Fixed with `#if canImport(MyRecCore)` for SPM/Xcode compatibility
+2. **UI Testing Limitation**: Avoided NSStatusItem creation in tests by testing notification logic instead
+3. **Access Control**: Made methods internal (not private) to allow testing while maintaining encapsulation
+
+**Documentation:**
+- Created `docs/testing-guide.md` - Quick reference for writing and troubleshooting unit tests
+
+**Next Steps:** Day 7 - Region Selection Overlay
+
+---
+
 ### Day 7 (Tuesday): Region Selection Overlay - Part 1
 *   **Task:** Create the foundational components for the region selection UI.
     *   `RegionSelectionWindow`: A full-screen, transparent window to host the selection UI.
