@@ -85,28 +85,24 @@ The application follows a multi-layer architecture:
    brew install swiftlint
    ```
 
-### Initial Setup
+### Build System
 
-When setting up the project for the first time or after pulling new code:
+MyRec uses **dual build systems**:
 
-1. **Verify all Swift files are added to the Xcode project:**
-   - Open `MyRec.xcodeproj` in Xcode
-   - Check that all `.swift` files in `MyRec/Models/`, `MyRec/Services/`, and `MyRec/` are included
-   - If files are missing, add them: Right-click **MyRec** group → **Add Files to "MyRec"...**
-     - **Uncheck** "Copy items if needed"
-     - **Check** "MyRec" target
-     - Select files/folders and click **Add**
+1. **Swift Package Manager (`Package.swift`)** - Recommended
+   - Fast, lightweight testing: `swift test`
+   - CI/CD friendly
+   - Cross-platform development
+   - Tests work out of the box
 
-2. **Add test files to MyRecTests target:**
-   - Right-click **MyRecTests** group → **Add Files to "MyRec"...**
-   - Select all test files in `MyRecTests/`
-   - **Check** "MyRecTests" target
+2. **Xcode Project (`MyRec.xcodeproj`)** - Optional
+   - Visual debugging in Xcode
+   - Rich UI test runner
+   - Detailed code coverage reports
+   - App building and distribution
 
-3. **Configure SwiftLint (optional):**
-   - If SwiftLint causes build issues, disable it temporarily:
-     - Select **MyRec** target → **Build Phases**
-     - Find **"Run Script"** phase (SwiftLint)
-     - Uncheck the checkbox or delete it
+**For development:** Use `swift test` for testing and `xcodebuild` for building the app.
+
 
 ### Building
 
@@ -133,92 +129,33 @@ xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Release -arch x
 
 ### Testing
 
+**Recommended:** Use Swift Package Manager for fast, lightweight testing.
+
 ```bash
-# Run all tests using provided script (recommended)
-./scripts/test.sh
+# Run all tests (recommended)
+swift test
 
-# Run unit tests with xcodebuild
-xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS'
+# Run tests with code coverage
+swift test --enable-code-coverage
 
-# Run specific test class
-xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS' -only-testing:MyRecTests/ResolutionTests
+# Run specific test suite
+swift test --filter ResolutionTests
 
 # Run specific test method
-xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS' -only-testing:MyRecTests/ResolutionTests/testResolutionDimensions
+swift test --filter ResolutionTests/testResolutionDimensions
+
+# Run tests in parallel
+swift test --parallel
 ```
 
-### Code Quality
+**Alternative:** Use Xcode for visual test runner and detailed coverage (requires Xcode test target setup):
 ```bash
-# Swift linting (if SwiftLint configured)
-swiftlint lint
+# Run tests via Xcode (if test target configured)
+xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS'
 
-# Auto-fix linting issues
-swiftlint --fix
+# Or use Xcode UI: Product → Test (⌘U)
 ```
 
-### Common Build Issues & Troubleshooting
-
-#### Issue: "Cannot find type 'StatusBarController' in scope"
-**Solution:** This is expected during Week 1 development. StatusBarController will be implemented in Week 2.
-- The reference in `AppDelegate.swift` should be commented out
-- Verify line 12 has: `// var statusBarController: StatusBarController? // Week 2`
-
-#### Issue: SwiftLint sandbox errors
-**Symptoms:**
-```
-error: Sandbox: swiftlint(...) deny(1) file-read-data
-```
-
-**Solution:**
-1. Disable SwiftLint Run Script temporarily:
-   - Xcode → Select **MyRec** target → **Build Phases**
-   - Uncheck **"Run Script"** phase (SwiftLint)
-2. Or update `.swiftlint.yml` to exclude problematic directories:
-   ```yaml
-   excluded:
-     - .git
-     - .github
-     - plan
-     - docs
-     - scripts
-   ```
-
-#### Issue: "No such file or directory: MyRec.xcodeproj"
-**Solution:** Make sure you're in the project root directory:
-```bash
-cd /Users/flex/workspace/my_rec/MyRec
-./scripts/build.sh Debug
-```
-
-#### Issue: Swift files not compiling
-**Symptoms:** Build succeeds but files are missing or not found
-
-**Solution:** Files need to be added to Xcode project:
-1. Open `MyRec.xcodeproj` in Xcode
-2. Verify all `.swift` files appear in the Project Navigator with the Swift icon (orange)
-3. If files are grayed out or missing:
-   - Right-click **MyRec** group → **Add Files to "MyRec"...**
-   - Select missing files/folders
-   - Ensure correct target is checked (**MyRec** or **MyRecTests**)
-
-#### Issue: Build succeeds but tests don't run
-**Solution:** Test files need to be added to MyRecTests target:
-1. Select a test file in Project Navigator
-2. Open **File Inspector** (⌘⌥1)
-3. Under **Target Membership**, check **MyRecTests**
-
-#### Clean Build
-If experiencing persistent build issues:
-```bash
-# Clean build folder in Xcode
-xcodebuild clean -project MyRec.xcodeproj -scheme MyRec
-
-# Or delete DerivedData entirely
-rm -rf ~/Library/Developer/Xcode/DerivedData/MyRec-*
-
-# Then rebuild
-./scripts/build.sh Debug
-```
 
 ## Core User Workflows
 
@@ -351,33 +288,6 @@ Never hard-code default values in UI code; centralize in SettingsManager.
 - Active Toggle: `#4caf50` (Green) - ON state
 - Disabled: `#666666` (Medium Gray)
 
-## Testing Strategy
-
-### Unit Tests
-- RecordingManager state transitions: 80% coverage
-- SettingsManager persistence: 90% coverage
-- File handling: 85% coverage
-- Target: 85% overall code coverage
-
-### Integration Tests
-- Full recording workflow (select → record → pause → resume → stop → save)
-- Settings persistence across app restarts
-- Audio/video sync verification
-- Trim operation accuracy
-
-### Performance Tests
-- CPU/GPU profiling during 1+ hour recordings
-- Memory leak detection with Instruments
-- Long-duration stability (2+ hours continuous recording)
-- Pause/resume stress testing (100+ cycles)
-
-### Compatibility Testing
-- macOS 12, 13, 14, 15
-- Intel Core i5/i7/i9 processors
-- Apple Silicon M1/M2/M3 chips
-- Multiple display configurations
-- Various audio device combinations
-
 ## Code Organization Patterns
 
 When adding new features:
@@ -407,35 +317,6 @@ Detailed phase documentation is in `docs/implementation plan.md`.
 4. **File Corruption:** Use atomic writes; validate files before playback
 5. **Thread Safety:** All UI updates must happen on main thread
 6. **GOP Alignment:** Pause/resume must align on keyframes to avoid artifacts
-
-## Distribution & Release
-
-### Code Signing
-- Requires Apple Developer account ($99/year)
-- Use "Developer ID Application" certificate for distribution
-- Enable hardened runtime and notarization
-
-### Notarization Process
-```bash
-# Sign the app
-codesign --deep --force --verify --verbose --sign "Developer ID Application" MyRec.app
-
-# Create DMG
-hdiutil create -volname "MyRec" -srcfolder MyRec.app -ov -format UDZO MyRec.dmg
-
-# Submit for notarization
-xcrun notarytool submit MyRec.dmg --apple-id your@email.com --team-id TEAM_ID --wait
-
-# Staple the notarization ticket
-xcrun stapler staple MyRec.app
-```
-
-## Version Management
-
-- **v1.0.0** - Initial release (core recording, trimming, settings)
-- **v1.0.x** - Hotfixes (critical bugs, performance, compatibility)
-- **v1.1.x** - Minor updates (UI/UX improvements, additional features)
-- **v2.0.x** - Major updates (library view, advanced editing, presets)
 
 ## Documentation References
 
