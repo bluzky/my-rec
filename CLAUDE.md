@@ -76,25 +76,75 @@ The application follows a multi-layer architecture:
 
 ## Build & Development Commands
 
+### Prerequisites
+
+1. **Xcode 15.0+** installed from the Mac App Store
+2. **Swift 5.9+** (comes with Xcode)
+3. **SwiftLint** (optional but recommended):
+   ```bash
+   brew install swiftlint
+   ```
+
+### Initial Setup
+
+When setting up the project for the first time or after pulling new code:
+
+1. **Verify all Swift files are added to the Xcode project:**
+   - Open `MyRec.xcodeproj` in Xcode
+   - Check that all `.swift` files in `MyRec/Models/`, `MyRec/Services/`, and `MyRec/` are included
+   - If files are missing, add them: Right-click **MyRec** group → **Add Files to "MyRec"...**
+     - **Uncheck** "Copy items if needed"
+     - **Check** "MyRec" target
+     - Select files/folders and click **Add**
+
+2. **Add test files to MyRecTests target:**
+   - Right-click **MyRecTests** group → **Add Files to "MyRec"...**
+   - Select all test files in `MyRecTests/`
+   - **Check** "MyRecTests" target
+
+3. **Configure SwiftLint (optional):**
+   - If SwiftLint causes build issues, disable it temporarily:
+     - Select **MyRec** target → **Build Phases**
+     - Find **"Run Script"** phase (SwiftLint)
+     - Uncheck the checkbox or delete it
+
 ### Building
+
 ```bash
-# Build for development (requires Xcode)
-xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Debug
+# Quick build using provided script (recommended)
+./scripts/build.sh Debug
+
+# Build for development using xcodebuild
+xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Debug -destination 'platform=macOS'
 
 # Build for release
+./scripts/build.sh Release
+
+# Or with xcodebuild:
 xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Release
 
 # Build universal binary (Intel + Apple Silicon)
-xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Release -arch x86_64 -arch arm64
+xcodebuild -project MyRec.xcodeproj -scheme MyRec -configuration Release -arch x86_64 -arch arm64 ONLY_ACTIVE_ARCH=NO
 ```
 
+**Build Output Location:**
+- Debug: `~/Library/Developer/Xcode/DerivedData/MyRec-*/Build/Products/Debug/MyRec.app`
+- Release: `~/Library/Developer/Xcode/DerivedData/MyRec-*/Build/Products/Release/MyRec.app`
+
 ### Testing
+
 ```bash
-# Run unit tests
+# Run all tests using provided script (recommended)
+./scripts/test.sh
+
+# Run unit tests with xcodebuild
 xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS'
 
-# Run specific test
-xcodebuild test -project MyRec.xcodeproj -scheme MyRec -only-testing:MyRecTests/RecordingManagerTests/testPauseResume
+# Run specific test class
+xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS' -only-testing:MyRecTests/ResolutionTests
+
+# Run specific test method
+xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=macOS' -only-testing:MyRecTests/ResolutionTests/testResolutionDimensions
 ```
 
 ### Code Quality
@@ -104,6 +154,70 @@ swiftlint lint
 
 # Auto-fix linting issues
 swiftlint --fix
+```
+
+### Common Build Issues & Troubleshooting
+
+#### Issue: "Cannot find type 'StatusBarController' in scope"
+**Solution:** This is expected during Week 1 development. StatusBarController will be implemented in Week 2.
+- The reference in `AppDelegate.swift` should be commented out
+- Verify line 12 has: `// var statusBarController: StatusBarController? // Week 2`
+
+#### Issue: SwiftLint sandbox errors
+**Symptoms:**
+```
+error: Sandbox: swiftlint(...) deny(1) file-read-data
+```
+
+**Solution:**
+1. Disable SwiftLint Run Script temporarily:
+   - Xcode → Select **MyRec** target → **Build Phases**
+   - Uncheck **"Run Script"** phase (SwiftLint)
+2. Or update `.swiftlint.yml` to exclude problematic directories:
+   ```yaml
+   excluded:
+     - .git
+     - .github
+     - plan
+     - docs
+     - scripts
+   ```
+
+#### Issue: "No such file or directory: MyRec.xcodeproj"
+**Solution:** Make sure you're in the project root directory:
+```bash
+cd /Users/flex/workspace/my_rec/MyRec
+./scripts/build.sh Debug
+```
+
+#### Issue: Swift files not compiling
+**Symptoms:** Build succeeds but files are missing or not found
+
+**Solution:** Files need to be added to Xcode project:
+1. Open `MyRec.xcodeproj` in Xcode
+2. Verify all `.swift` files appear in the Project Navigator with the Swift icon (orange)
+3. If files are grayed out or missing:
+   - Right-click **MyRec** group → **Add Files to "MyRec"...**
+   - Select missing files/folders
+   - Ensure correct target is checked (**MyRec** or **MyRecTests**)
+
+#### Issue: Build succeeds but tests don't run
+**Solution:** Test files need to be added to MyRecTests target:
+1. Select a test file in Project Navigator
+2. Open **File Inspector** (⌘⌥1)
+3. Under **Target Membership**, check **MyRecTests**
+
+#### Clean Build
+If experiencing persistent build issues:
+```bash
+# Clean build folder in Xcode
+xcodebuild clean -project MyRec.xcodeproj -scheme MyRec
+
+# Or delete DerivedData entirely
+rm -rf ~/Library/Developer/Xcode/DerivedData/MyRec-*
+
+# Then rebuild
+./scripts/build.sh Debug
 ```
 
 ## Core User Workflows
