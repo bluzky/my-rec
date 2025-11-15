@@ -22,7 +22,9 @@ let package = Package(
                 "Models/RecordingState.swift",
                 "Models/VideoMetadata.swift",
                 "Services/Settings/SettingsManager.swift",
-                "Services/Permissions/PermissionManager.swift"
+                "Services/Permissions/PermissionManager.swift",
+                "Services/StatusBar/StatusBarController.swift",
+                "Extensions/Notification+Names.swift"
             ],
             cSettings: [
                 .define("SWIFT_PACKAGE")

@@ -21,6 +21,7 @@ class PermissionManager {
 
     // MARK: - Screen Recording Permission
 
+    @available(macOS 12.3, *)
     func checkScreenRecordingPermission() async -> PermissionStatus {
         do {
             _ = try await SCShareableContent.current
@@ -30,6 +31,7 @@ class PermissionManager {
         }
     }
 
+    @available(macOS 12.3, *)
     func requestScreenRecordingPermission() async -> Bool {
         let status = await checkScreenRecordingPermission()
 

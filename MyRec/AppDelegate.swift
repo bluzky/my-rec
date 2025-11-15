@@ -7,18 +7,22 @@
 
 import Cocoa
 import SwiftUI
+#if canImport(MyRecCore)
+import MyRecCore
+#endif
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    // var statusBarController: StatusBarController? // Week 2
+    var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (menu bar app only)
         NSApp.setActivationPolicy(.accessory)
 
-        // Initialize status bar (will create in Week 2)
-        // statusBarController = StatusBarController()
+        // Initialize status bar
+        statusBarController = StatusBarController()
 
         print("✅ MyRec launched successfully")
+        print("✅ Status bar controller initialized")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
