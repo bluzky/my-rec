@@ -1,5 +1,5 @@
 import XCTest
-@testable import MyRec
+@testable import MyRecCore
 
 class SettingsManagerTests: XCTestCase {
     var sut: SettingsManager!
@@ -7,9 +7,12 @@ class SettingsManagerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         sut = SettingsManager.shared
+        // Reset to defaults before each test to ensure clean state
+        sut.reset()
     }
 
     func testDefaultSettings() {
+        // After reset, should have default values
         XCTAssertEqual(sut.defaultResolution, .fullHD)
         XCTAssertEqual(sut.defaultFrameRate, .fps30)
         XCTAssertFalse(sut.launchAtLogin)

@@ -1,5 +1,5 @@
 import XCTest
-@testable import MyRec
+@testable import MyRecCore
 
 class RecordingSettingsTests: XCTestCase {
     func testDefaultSettings() {
