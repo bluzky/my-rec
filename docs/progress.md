@@ -35,7 +35,7 @@
 ## Week 2: System Tray & Region Selection (In Progress)
 
 **Status:** IN PROGRESS
-**Current Day:** Day 7 (completed)
+**Current Day:** Day 8 (completed)
 
 ### Day 6: System Tray Implementation ✅
 
@@ -80,19 +80,35 @@
 
 **Detailed Summary:** See [week2-day7-summary.md](progress/week2-day7-summary.md)
 
-### Day 8: Region Selection Overlay - Part 2 (Upcoming)
+### Day 8: Region Selection Overlay - Part 2 ✅
 
-**Status:** PENDING
-**Scheduled:** November 16, 2025
+**Status:** COMPLETED
+**Date:** November 16, 2025
 
-**Planned Features:**
-- [ ] 8 resize handles (corners + edges)
-- [ ] ResizeHandleView with hover effects
-- [ ] Cursor changes during resize
-- [ ] Resize logic in ViewModel
-- [ ] Keyboard arrow key adjustments
-- [ ] Visual feedback and animations
-- [ ] Unit tests for resize logic
+**Features:**
+- ✅ ResizeHandle enum model (8 handles: corners + edges)
+- ✅ ResizeHandleView with hover effects and animations
+- ✅ Cursor changes during resize (with macOS limitations)
+- ✅ Resize logic in ViewModel with coordinate conversion
+- ✅ Visual feedback: scale effects (1.0 → 1.3), smooth animations
+- ✅ Minimum size enforcement during resize
+- ✅ Edge-based region calculations
+- ✅ 11 unit tests for resize logic (all passing)
+- ✨ Bonus: Window detection and hover highlighting
+- ✨ Bonus: Enhanced visual effects with blend modes
+
+**Files Created:**
+- `MyRec/Models/ResizeHandle.swift`
+- `MyRec/Views/RegionSelection/ResizeHandleView.swift`
+- `docs/progress/week2-day8-summary.md`
+
+**Files Modified:**
+- `MyRec/ViewModels/RegionSelectionViewModel.swift` (+102 lines)
+- `MyRec/Views/RegionSelection/RegionSelectionView.swift` (enhanced)
+- `MyRecTests/ViewModels/RegionSelectionViewModelTests.swift` (+139 lines)
+- `Package.swift` (added new files)
+
+**Detailed Summary:** See [week2-day8-summary.md](progress/week2-day8-summary.md)
 
 ### Day 9: Keyboard Shortcuts & Settings Bar (Upcoming)
 
@@ -137,15 +153,15 @@
 
 ### Current Test Suite Status
 
-**Total Tests:** 49
-**Passing:** 49 ✅
+**Total Tests:** 61
+**Passing:** 61 ✅
 **Failing:** 0
-**Last Run:** November 15, 2025
+**Last Run:** November 16, 2025
 
 **Test Breakdown by Category:**
 - Core Models: 13 tests ✅
 - Services: 11 tests ✅
-- ViewModels: 18 tests ✅
+- ViewModels: 30 tests ✅ (+12 from Day 8)
 - Extensions: 7 tests ✅
 
 **Build Status:** ✅ Passing (Xcode + SPM)
