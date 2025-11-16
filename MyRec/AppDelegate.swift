@@ -14,6 +14,7 @@ import MyRecCore
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarController: StatusBarController?
     var regionSelectionWindow: RegionSelectionWindow?
+    var settingsWindowController: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide dock icon (menu bar app only)
@@ -22,11 +23,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize status bar
         statusBarController = StatusBarController()
 
+        // Initialize settings window controller
+        settingsWindowController = SettingsWindowController(settingsManager: SettingsManager.shared)
+
         // Set up notification observers
         setupNotificationObservers()
 
         print("✅ MyRec launched successfully")
         print("✅ Status bar controller initialized")
+        print("✅ Settings window controller initialized")
         print("✅ Notification observers set up")
     }
 
@@ -39,12 +44,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for open settings notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenSettings),
+            name: .openSettings,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
+        print("✅ Registered observer for openSettings notification")
     }
 
     @objc private func handleStartRecording() {
         print("📱 Record Screen clicked - showing region selection overlay")
         showRegionSelection()
+    }
+
+    @objc private func handleOpenSettings() {
+        print("⚙️ Settings clicked - showing settings dialog")
+        showSettings()
     }
 
     private func showRegionSelection() {
@@ -60,6 +79,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         print("✅ Region selection window shown")
+    }
+
+    private func showSettings() {
+        settingsWindowController?.show()
+        print("✅ Settings dialog shown")
     }
 
     func applicationWillTerminate(_ notification: Notification) {

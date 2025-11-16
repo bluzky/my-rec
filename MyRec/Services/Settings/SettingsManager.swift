@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 
-class SettingsManager: ObservableObject {
-    static let shared = SettingsManager()
+public class SettingsManager: ObservableObject {
+    public static let shared = SettingsManager()
 
     @Published var savePath: URL {
         didSet { save() }
@@ -32,7 +32,7 @@ class SettingsManager: ObservableObject {
         static let defaultSettings = "defaultSettings"
     }
 
-    private init() {
+    public init() {
         let defaultPath = FileManager.default.urls(
             for: .moviesDirectory,
             in: .userDomainMask

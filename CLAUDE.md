@@ -321,6 +321,6 @@ Detailed phase documentation is in `docs/implementation plan.md`.
 ## Documentation References
 
 - Main requirements: `docs/requirements.md`
-- Implementation plan: `docs/implementation plan.md`
+- Implementation plan: `plan/master implementation plan.md`
 - UI reference: `docs/UI quick references.md`
 - Timeline: `docs/timeline index.md`
