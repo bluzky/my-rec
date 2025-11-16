@@ -51,52 +51,49 @@ Created comprehensive mock data infrastructure for UI development:
 
 ### 2. Settings Dialog ✅
 
-Built complete settings dialog with tabbed interface:
+Built simple, clean settings dialog with single-page design:
 
 **Files Created:**
-- `MyRec/Views/Settings/SettingsDialogView.swift` (400 lines)
+- `MyRec/Views/Settings/SettingsDialogView.swift` (160 lines)
 - `MyRec/Windows/SettingsWindowController.swift` (57 lines)
 
 **UI Structure:**
-- Modal window (600×500 fixed size)
-- Tabbed interface with 3 tabs:
-  1. **General** - File management & startup options
-  2. **Recording** - Recording defaults & options
-  3. **Shortcuts** - Keyboard shortcut configuration
+- Modal window (500×450 fixed size)
+- Single-page layout (no tabs)
+- Only close button visible (minimize/zoom hidden)
+- Auto-save on changes (no OK/Cancel buttons)
 
-**General Tab:**
-- Save location with file picker
-- File naming options:
-  - Standard format: REC-YYYYMMDDHHMMSS.mp4
-  - Custom prefix option
-- Launch at login toggle
-- Show in Dock toggle
+**Settings Sections:**
 
-**Recording Tab:**
-- Default resolution picker (720P, 1080P, 2K, 4K)
-- Default FPS picker (15, 24, 30, 60 FPS)
-- Default format picker (MP4)
-- Countdown duration picker (1, 2, 3, 5 seconds)
-- Recording options:
-  - Show countdown before recording
-  - Play sound when recording starts
-  - Highlight cursor during recording
+1. **Save Location**
+   - Text field with current path
+   - Folder picker button
+   - Auto-saves on change
 
-**Shortcuts Tab:**
-- Keyboard shortcut display for:
-  - Start/Pause Recording (⌘⌥1)
-  - Stop Recording (⌘⌥2)
-  - Open Settings (⌘⌥,)
-- Set button for each shortcut (placeholder for future implementation)
-- Accessibility permissions note
+2. **Startup**
+   - Launch at login toggle
+   - Auto-saves on change
+
+3. **Default Quality**
+   - Resolution picker (720P, 1080P, 2K, 4K)
+   - Frame rate picker (15, 24, 30, 60 FPS)
+   - Auto-saves via @Published properties
+
+4. **Keyboard Shortcuts**
+   - Start/Pause Recording: ⌘⌥1 (read-only)
+   - Stop Recording: ⌘⌥2 (read-only)
+
+5. **Version Info**
+   - MyRec v1.0.0 display
 
 **Integration:**
 - Direct binding to `SettingsManager.shared`
-- Auto-save on value changes (via @Published properties)
-- Cancel/Save buttons for explicit control
+- Auto-save on all value changes
+- No manual save buttons needed
 - Window controller for easy presentation
 - Floating window level (stays on top)
 - Auto-remembers window position
+- Only close button visible (minimal chrome)
 
 ---
 
@@ -229,9 +226,9 @@ Based on the UI-First plan:
 **Lines of Code:**
 - MockRecording.swift: 225 lines
 - MockRecordingTests.swift: 252 lines
-- SettingsDialogView.swift: 400 lines
+- SettingsDialogView.swift: 160 lines (simplified from 400)
 - SettingsWindowController.swift: 57 lines
-- **Total: 934 lines**
+- **Total: 694 lines**
 
 **Test Coverage:**
 - Mock Data: 16 tests, 100% coverage

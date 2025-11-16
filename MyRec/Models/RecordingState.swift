@@ -1,6 +1,6 @@
 import Foundation
 
-enum RecordingState: Equatable {
+public enum RecordingState: Equatable {
     case idle
     case recording(startTime: Date)
     case paused(elapsedTime: TimeInterval)
