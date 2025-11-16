@@ -2,7 +2,7 @@
 
 **Strategy:** Build all UI components with mock/placeholder data first, then hook up actual recording implementation later.
 
-**Last Updated:** November 16, 2025
+**Last Updated:** November 16, 2025 (Day 13 completed)
 
 ---
 
@@ -392,15 +392,19 @@ class MockRecordingGenerator {
 ### Week 3: Core UI Components (Nov 18-24)
 
 **Day 10-11:** Mock Data & Settings Dialog
-- [ ] Create MockRecording models
-- [ ] Build Settings Dialog UI
-- [ ] Wire up settings persistence
+- [x] Create MockRecording models
+- [x] Build Settings Dialog UI
+- [x] Wire up settings persistence
 
-**Day 12-13:** Recording History
-- [ ] Build Recording History window
-- [ ] Generate mock recordings
-- [ ] Implement search/filter UI
-- [ ] Add action buttons
+**Day 12-13:** Home Page/Dashboard (Revised)
+- [x] Build Home Page window with centered Record button
+- [x] Generate mock recordings (5 most recent)
+- [x] Add recent recordings list with thumbnails
+- [x] Add action buttons (folder, trash, share)
+- [x] Implement hover feedback (delete icon turns red)
+- [x] Auto-close home page when recording starts
+- [x] Add "Show Dashboard" to status bar menu
+- [x] Remove Recording History feature (simplified approach)
 
 **Day 14:** Preview Dialog
 - [ ] Build Preview Dialog layout
@@ -486,6 +490,7 @@ All of this works with mock data and placeholder visuals!
 
 ---
 
-**Status:** Ready to begin UI-first implementation
+**Status:** Week 3 completed - Home Page/Dashboard implemented
 **Target:** Complete all UI by end of Week 4
-**Next Step:** Create mock data models and Settings Dialog
+**Next Step:** Build Preview Dialog (Day 14)
+**Completed:** Day 10-13 (Mock data, Settings Dialog, Home Page with recordings list)
