@@ -28,6 +28,25 @@ struct RegionSelectionView: View {
                 let swiftUIRegion = convertScreenToSwiftUICoordinates(screenRegion)
                 SelectionOverlay(region: swiftUIRegion, viewModel: viewModel)
             }
+
+            // Settings bar at the bottom center (macOS native style)
+            VStack {
+                Spacer()
+                SettingsBarView(
+                    settingsManager: SettingsManager.shared,
+                    regionSize: viewModel.selectedRegion?.size ?? CGSize(width: 0, height: 0),
+                    onClose: {
+                        self.viewModel.reset()
+                        self.onClose()
+                    },
+                    onRecord: {
+                        self.handleRecordButton()
+                    }
+                )
+                .fixedSize(horizontal: true, vertical: true) // Fit content size
+                .frame(maxWidth: .infinity) // Center horizontally
+                .padding(.bottom, 40)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .coordinateSpace(name: RegionSelectionCoordinateSpace.overlay)
@@ -74,6 +93,26 @@ struct RegionSelectionView: View {
             }
         })
         // Note: Escape key handling will be added at the window level for macOS 12 compatibility
+    }
+
+    /// Handle the record button action
+    private func handleRecordButton() {
+        // TODO: Implement actual recording logic
+        // For now, post a notification to start recording with the selected region
+        guard let selectedRegion = viewModel.selectedRegion else {
+            print("⚠️ No region selected")
+            return
+        }
+
+        print("🎬 Starting recording with region: \(selectedRegion)")
+        // Post notification with selected region
+        NotificationCenter.default.post(
+            name: Notification.Name("BeginRecording"),
+            object: selectedRegion
+        )
+
+        // Close the region selection window
+        onClose()
     }
 
     /// Convert global screen coordinates to the SwiftUI overlay coordinate space

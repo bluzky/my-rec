@@ -26,11 +26,13 @@ let package = Package(
                 "Services/Permissions/PermissionManager.swift",
                 "Services/StatusBar/StatusBarController.swift",
                 "Services/WindowDetection/WindowDetectionService.swift",
+                "Services/Keyboard/KeyboardShortcutManager.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "Windows/RegionSelectionWindow.swift",
                 "Views/RegionSelection/RegionSelectionView.swift",
-                "Views/RegionSelection/ResizeHandleView.swift"
+                "Views/RegionSelection/ResizeHandleView.swift",
+                "Views/Settings/SettingsBarView.swift"
             ],
             cSettings: [
                 .define("SWIFT_PACKAGE")
