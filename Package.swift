@@ -22,6 +22,7 @@ let package = Package(
                 "Models/RecordingState.swift",
                 "Models/VideoMetadata.swift",
                 "Models/ResizeHandle.swift",
+                "Models/MockRecording.swift",
                 "Services/Settings/SettingsManager.swift",
                 "Services/Permissions/PermissionManager.swift",
                 "Services/StatusBar/StatusBarController.swift",
@@ -30,9 +31,11 @@ let package = Package(
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "Windows/RegionSelectionWindow.swift",
+                "Windows/SettingsWindowController.swift",
                 "Views/RegionSelection/RegionSelectionView.swift",
                 "Views/RegionSelection/ResizeHandleView.swift",
-                "Views/Settings/SettingsBarView.swift"
+                "Views/Settings/SettingsBarView.swift",
+                "Views/Settings/SettingsDialogView.swift"
             ],
             cSettings: [
                 .define("SWIFT_PACKAGE")
