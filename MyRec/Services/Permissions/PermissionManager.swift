@@ -6,6 +6,7 @@ enum PermissionType {
     case screenRecording
     case microphone
     case camera
+    case accessibility
 }
 
 enum PermissionStatus {
@@ -109,6 +110,32 @@ class PermissionManager {
         return await AVCaptureDevice.requestAccess(for: .video)
     }
 
+    // MARK: - Accessibility Permission
+
+    func checkAccessibilityPermission() -> PermissionStatus {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
+        let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+        return isTrusted ? .granted : .denied
+    }
+
+    func requestAccessibilityPermission() -> Bool {
+        let status = checkAccessibilityPermission()
+
+        if status == .granted {
+            return true
+        }
+
+        // Show system prompt
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+        let isTrusted = AXIsProcessTrustedWithOptions(options as CFDictionary)
+
+        if !isTrusted {
+            showPermissionAlert(for: .accessibility)
+        }
+
+        return isTrusted
+    }
+
     // MARK: - Alert Helper
 
     private func showPermissionAlert(for type: PermissionType) {
@@ -136,6 +163,14 @@ class PermissionManager {
             Please enable camera access in \
             System Settings → Privacy & Security → Camera.
             """
+
+        case .accessibility:
+            alert.messageText = "Accessibility Permission Required"
+            alert.informativeText = """
+            Accessibility permission is required for global keyboard shortcuts.
+            Please enable MyRec in \
+            System Settings → Privacy & Security → Accessibility.
+            """
         }
 
         alert.addButton(withTitle: "Open System Settings")
@@ -158,6 +193,8 @@ class PermissionManager {
             urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
         case .camera:
             urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"
+        case .accessibility:
+            urlString = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         }
 
         if let url = URL(string: urlString) {

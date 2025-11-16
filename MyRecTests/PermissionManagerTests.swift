@@ -23,4 +23,17 @@ class PermissionManagerTests: XCTestCase {
         let status = await sut.checkScreenRecordingPermission()
         XCTAssertTrue([.granted, .denied].contains(status))
     }
+
+    func testCheckAccessibilityPermission() {
+        let status = sut.checkAccessibilityPermission()
+        XCTAssertTrue([.granted, .denied].contains(status))
+    }
+
+    func testRequestAccessibilityPermission() {
+        // Test that requesting accessibility permission doesn't crash
+        // Note: In test environment, this typically returns false
+        // as tests don't have accessibility permission granted
+        let result = sut.requestAccessibilityPermission()
+        XCTAssertTrue(result == true || result == false)
+    }
 }

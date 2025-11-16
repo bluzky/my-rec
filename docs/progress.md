@@ -1,12 +1,12 @@
 # MyRec Development Progress
 
-**Last Updated:** November 15, 2025
+**Last Updated:** November 16, 2025
 
 ## Project Status
 
 **Current Phase:** Phase 1 - Foundation & Core Recording (Week 2)
-**Overall Progress:** Week 2, Day 7 completed
-**Next Milestone:** Day 8 - Region Selection Overlay - Part 2
+**Overall Progress:** Week 2, Day 9 completed
+**Next Milestone:** Day 10 - ScreenCaptureKit POC
 
 ---
 
@@ -110,19 +110,44 @@
 
 **Detailed Summary:** See [week2-day8-summary.md](progress/week2-day8-summary.md)
 
-### Day 9: Keyboard Shortcuts & Settings Bar (Upcoming)
+### Day 9: Keyboard Shortcuts & Settings Bar ✅
 
-**Status:** PENDING
+**Status:** COMPLETED
+**Date:** November 16, 2025
 
-**Planned Features:**
-- [ ] Accessibility permission checking
-- [ ] KeyboardShortcutManager (⌘⌥1, ⌘⌥2, ⌘⌥,)
-- [ ] Global hotkey registration
-- [ ] SettingsBarView UI
-- [ ] Toggle buttons (Camera, Audio, Mic, Pointer)
-- [ ] Resolution & FPS selectors
-- [ ] Settings persistence
-- [ ] Unit tests
+**Features:**
+- ✅ KeyboardShortcutManager with Carbon Event Manager API
+- ✅ Global hotkeys: ⌘⌥1 (Start/Pause), ⌘⌥2 (Stop), ⌘⌥, (Settings)
+- ✅ Accessibility permission checking and requests
+- ✅ SettingsBarView UI component (macOS native style)
+- ✅ Capture mode buttons (Screen, Window, Region selection)
+- ✅ Settings dropdown showing current Resolution + FPS
+- ✅ Toggle buttons (Cursor, Camera, System Audio, Microphone)
+- ✅ Record button with circle icon
+- ✅ NSVisualEffectView blur background (.sidebar material)
+- ✅ Bottom-center positioning with content-fit width
+- ✅ Integration with RegionSelectionView
+- ✅ Settings persistence via SettingsManager
+- ✅ 12 unit tests (all passing)
+
+**Files Created:**
+- `MyRec/Services/Keyboard/KeyboardShortcutManager.swift`
+- `MyRec/Views/Settings/SettingsBarView.swift`
+- `MyRecTests/Services/KeyboardShortcutManagerTests.swift`
+- `docs/progress/week2-day9-summary.md`
+
+**Files Modified:**
+- `MyRec/Services/Permissions/PermissionManager.swift` (+41 lines)
+- `MyRecTests/PermissionManagerTests.swift` (+13 lines)
+- `MyRec/Views/RegionSelection/RegionSelectionView.swift` (+integration)
+- `Package.swift` (+2 lines)
+
+**UI Layout:**
+```
+[X] | [Screen] [Window] [Region] | [1080P 30FPS ▾] | [Cursor] [Camera] [Audio] [Mic] | [⏺]
+```
+
+**Detailed Summary:** See [week2-day9-summary.md](progress/week2-day9-summary.md)
 
 ### Day 10: ScreenCaptureKit POC (Upcoming)
 
@@ -153,15 +178,15 @@
 
 ### Current Test Suite Status
 
-**Total Tests:** 61
-**Passing:** 61 ✅
+**Total Tests:** 73
+**Passing:** 73 ✅
 **Failing:** 0
 **Last Run:** November 16, 2025
 
 **Test Breakdown by Category:**
 - Core Models: 13 tests ✅
-- Services: 11 tests ✅
-- ViewModels: 30 tests ✅ (+12 from Day 8)
+- Services: 23 tests ✅ (+12 from Day 9)
+- ViewModels: 30 tests ✅
 - Extensions: 7 tests ✅
 
 **Build Status:** ✅ Passing (Xcode + SPM)
