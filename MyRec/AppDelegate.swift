@@ -15,16 +15,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarController: StatusBarController?
     var regionSelectionWindow: RegionSelectionWindow?
     var settingsWindowController: SettingsWindowController?
+    var homePageWindowController: HomePageWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide dock icon (menu bar app only)
-        NSApp.setActivationPolicy(.accessory)
+        // Show dock icon for window-based app
+        NSApp.setActivationPolicy(.regular)
 
         // Initialize status bar
         statusBarController = StatusBarController()
 
         // Initialize settings window controller
         settingsWindowController = SettingsWindowController(settingsManager: SettingsManager.shared)
+
+        // Initialize and show home page window
+        homePageWindowController = HomePageWindowController()
+        homePageWindowController?.show()
 
         // Set up notification observers
         setupNotificationObservers()
@@ -35,8 +40,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("✅ MyRec launched successfully")
         print("✅ Status bar controller initialized")
         print("✅ Settings window controller initialized")
+        print("✅ Home page window initialized and shown")
         print("✅ Notification observers set up")
-        print("💡 Test: Right-click status bar to see demo options")
+        print("💡 Test: Use the home page or status bar to interact with MyRec")
     }
 
     private func setupNotificationObservers() {
@@ -56,8 +62,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for show dashboard notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShowDashboard),
+            name: .showDashboard,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
+        print("✅ Registered observer for showDashboard notification")
     }
 
     private func addTestMenuItems() {
@@ -97,13 +112,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func handleStartRecording() {
-        print("📱 Record Screen clicked - showing region selection overlay")
+        print("📱 Record Screen clicked - hiding home page and showing region selection overlay")
+        // Hide home page window before showing region selection
+        homePageWindowController?.hide()
         showRegionSelection()
     }
 
     @objc private func handleOpenSettings() {
         print("⚙️ Settings clicked - showing settings dialog")
         showSettings()
+    }
+
+    @objc private func handleShowDashboard() {
+        print("🏠 Dashboard clicked - showing home page")
+        showDashboard()
     }
 
     private func showRegionSelection() {
@@ -124,6 +146,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSettings() {
         settingsWindowController?.show()
         print("✅ Settings dialog shown")
+    }
+
+    private func showDashboard() {
+        homePageWindowController?.show()
+        print("✅ Dashboard shown")
     }
 
     // MARK: - Demo Methods for System Tray Testing

@@ -12,6 +12,8 @@ public extension Notification.Name {
     static let pauseRecording = Notification.Name("pauseRecording")
     static let stopRecording = Notification.Name("stopRecording")
     static let openSettings = Notification.Name("openSettings")
-    static let openRecordingHistory = Notification.Name("openRecordingHistory")
     static let recordingStateChanged = Notification.Name("recordingStateChanged")
+    static let openPreview = Notification.Name("openPreview")
+    static let openTrim = Notification.Name("openTrim")
+    static let showDashboard = Notification.Name("showDashboard")
 }

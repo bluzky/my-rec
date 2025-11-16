@@ -200,6 +200,17 @@ public class StatusBarController: NSObject, ObservableObject {
 
         menu?.addItem(NSMenuItem.separator())
 
+        // Dashboard
+        let dashboardMenuItem = NSMenuItem(
+            title: "🏠 Show Dashboard",
+            action: #selector(showDashboard),
+            keyEquivalent: ""
+        )
+        dashboardMenuItem.target = self
+        menu?.addItem(dashboardMenuItem)
+
+        menu?.addItem(NSMenuItem.separator())
+
         // Record option
         recordMenuItem = NSMenuItem(
             title: "▶ Start Recording",
@@ -211,7 +222,7 @@ public class StatusBarController: NSObject, ObservableObject {
 
         menu?.addItem(NSMenuItem.separator())
 
-        // Settings and History
+        // Settings
         let settingsMenuItem = NSMenuItem(
             title: "⚙ Settings...",
             action: #selector(openSettings),
@@ -219,14 +230,6 @@ public class StatusBarController: NSObject, ObservableObject {
         )
         settingsMenuItem.target = self
         menu?.addItem(settingsMenuItem)
-
-        let historyMenuItem = NSMenuItem(
-            title: "📂 Recording History...",
-            action: #selector(openRecordingHistory),
-            keyEquivalent: ""
-        )
-        historyMenuItem.target = self
-        menu?.addItem(historyMenuItem)
 
         menu?.addItem(NSMenuItem.separator())
 
@@ -400,9 +403,9 @@ public class StatusBarController: NSObject, ObservableObject {
         )
     }
 
-    @objc func openRecordingHistory() {
+    @objc func showDashboard() {
         NotificationCenter.default.post(
-            name: .openRecordingHistory,
+            name: .showDashboard,
             object: nil
         )
     }
