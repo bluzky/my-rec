@@ -30,6 +30,8 @@ let package = Package(
                 "Services/Keyboard/KeyboardShortcutManager.swift",
                 "Services/Capture/ScreenCaptureEngine.swift",
                 "Services/Video/VideoEncoder.swift",
+                "Services/Recording/RecordingManager.swift",
+                "Services/FileManagement/FileManagerService.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",
