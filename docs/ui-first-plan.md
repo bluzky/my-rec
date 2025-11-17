@@ -2,7 +2,7 @@
 
 **Strategy:** Build all UI components with mock/placeholder data first, then hook up actual recording implementation later.
 
-**Last Updated:** November 16, 2025
+**Last Updated:** November 17, 2025 (Day 15-16 completed)
 
 ---
 
@@ -392,29 +392,42 @@ class MockRecordingGenerator {
 ### Week 3: Core UI Components (Nov 18-24)
 
 **Day 10-11:** Mock Data & Settings Dialog
-- [ ] Create MockRecording models
-- [ ] Build Settings Dialog UI
-- [ ] Wire up settings persistence
+- [x] Create MockRecording models
+- [x] Build Settings Dialog UI
+- [x] Wire up settings persistence
 
-**Day 12-13:** Recording History
-- [ ] Build Recording History window
-- [ ] Generate mock recordings
-- [ ] Implement search/filter UI
-- [ ] Add action buttons
+**Day 12-13:** Home Page/Dashboard (Revised)
+- [x] Build Home Page window with centered Record button
+- [x] Generate mock recordings (5 most recent)
+- [x] Add recent recordings list with thumbnails
+- [x] Add action buttons (folder, trash, share)
+- [x] Implement hover feedback (delete icon turns red)
+- [x] Auto-close home page when recording starts
+- [x] Add "Show Dashboard" to status bar menu
+- [x] Remove Recording History feature (simplified approach)
 
 **Day 14:** Preview Dialog
-- [ ] Build Preview Dialog layout
-- [ ] Create video placeholder
-- [ ] Add playback controls (mock)
-- [ ] Wire up metadata display
+- [x] Build Preview Dialog layout
+- [x] Create video placeholder
+- [x] Add playback controls (mock)
+- [x] Wire up metadata display
+- [x] Add toolbar with action buttons (Trim, Open Folder, Delete, Share)
+- [x] Implement 2-row control layout (progress + controls)
+- [x] Add inline volume control with slider
+- [x] Add playback speed dropdown menu (0.5x - 2x)
+- [x] Add fullscreen button
+- [x] Keyboard shortcuts (Space, ← →)
+- [x] Remove sidebar for full-width video player
 
 ### Week 4: Trim UI & Polish (Nov 25-Dec 1)
 
 **Day 15-16:** Trim Dialog
-- [ ] Build Trim Dialog UI
-- [ ] Create timeline component
-- [ ] Implement draggable handles
-- [ ] Add frame preview placeholder
+- [x] Build Trim Dialog UI
+- [x] Create timeline component with time markers
+- [x] Implement draggable start/end handles
+- [x] Add frame preview placeholder
+- [x] Wire up mock behavior (handle dragging, playback)
+- [x] Integrate with AppDelegate and Preview Dialog
 
 **Day 17-18:** Polish & Integration
 - [ ] Polish Settings Bar
@@ -486,6 +499,7 @@ All of this works with mock data and placeholder visuals!
 
 ---
 
-**Status:** Ready to begin UI-first implementation
+**Status:** Day 15-16 completed - Trim Dialog fully implemented
 **Target:** Complete all UI by end of Week 4
-**Next Step:** Create mock data models and Settings Dialog
+**Next Step:** Polish & Integration (Day 17-18)
+**Completed:** Day 10-16 (Mock data, Settings Dialog, Home Page, Preview Dialog, Trim Dialog)

@@ -41,7 +41,8 @@ struct RegionSelectionView: View {
                     },
                     onRecord: {
                         self.handleRecordButton()
-                    }
+                    },
+                    isRecording: false // TODO: Hook up actual recording state
                 )
                 .fixedSize(horizontal: true, vertical: true) // Fit content size
                 .frame(maxWidth: .infinity) // Center horizontally
