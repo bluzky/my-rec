@@ -28,6 +28,7 @@ let package = Package(
                 "Services/StatusBar/StatusBarController.swift",
                 "Services/WindowDetection/WindowDetectionService.swift",
                 "Services/Keyboard/KeyboardShortcutManager.swift",
+                "Services/Capture/ScreenCaptureEngine.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",
