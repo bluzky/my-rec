@@ -20,12 +20,12 @@
 ### Success Criteria
 
 By end of Week 5, the app should:
-- ✅ Capture screen content using ScreenCaptureKit
-- ✅ Encode video to H.264/MP4 format
-- ✅ Save recordings to ~/Movies/ with correct naming
-- ✅ Play back recorded videos in Preview Dialog
-- ✅ Show real recording duration and file size
-- ✅ Handle recording start/stop from UI
+- ✅ Capture screen content using ScreenCaptureKit (Day 20 ✅)
+- ✅ Encode video to H.264/MP4 format (Day 21 ✅)
+- ✅ Save recordings to ~/Movies/ with correct naming (Day 22 ✅)
+- 🚧 Play back recorded videos in Preview Dialog (Day 23)
+- 🚧 Show real recording duration and file size (Day 23)
+- 🚧 Handle recording start/stop from UI (Day 23)
 
 ### Out of Scope (Future Weeks)
 
@@ -34,6 +34,49 @@ By end of Week 5, the app should:
 - ❌ Camera overlay (Week 8)
 - ❌ Trim functionality (keep mock for now)
 - ❌ Advanced encoding options
+
+---
+
+## Progress Summary
+
+### Completed (Days 20-22)
+
+**Day 20: ScreenCaptureKit Foundation** ✅
+- Created `ScreenCaptureEngine.swift` (295 lines)
+- Implements SCStream-based screen capture
+- Delivers CVPixelBuffer + CMTime frames
+- Supports all resolutions (720p-4K) and frame rates (15-60fps)
+- 14 unit tests + manual integration test
+- Documentation: `docs/day20-completion-summary.md`
+
+**Day 21: Video Encoding Pipeline** ✅
+- Created `VideoEncoder.swift` (358 lines)
+- AVAssetWriter-based H.264/MP4 encoding
+- Adaptive bitrate (2.5-15 Mbps)
+- Atomic file writes (temp → final)
+- Real-time encoding with backpressure handling
+- 12 unit tests + end-to-end integration test
+- Documentation: `docs/day21-completion-summary.md`
+
+**Day 22: RecordingManager & File System** ✅
+- Created `RecordingManager.swift` (325 lines)
+- Created `FileManagerService.swift` (360 lines)
+- Orchestrates capture → encode → save flow
+- State machine with @Published properties
+- Real-time duration tracking
+- Filename generation (REC-{timestamp}.mp4)
+- VideoMetadata extraction
+- 25 unit tests (10 + 15)
+- Documentation: `docs/day22-completion-summary.md`
+
+**Total Implementation:** ~1,338 lines of production code, 51 tests
+
+### In Progress
+
+**Day 23: UI Integration & Testing** 🚧
+- Replace mock recording logic with RecordingManager
+- Connect UI components to real backend
+- End-to-end manual testing
 
 ---
 
@@ -133,7 +176,7 @@ By end of Week 5, the app should:
 
 ## Day 20: ScreenCaptureKit Foundation
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Focus:** Get screen capture working with ScreenCaptureKit
 
 ### Tasks
@@ -213,7 +256,7 @@ class ScreenCaptureEngine {
 
 ## Day 21: Video Encoding Pipeline
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Focus:** Encode captured frames to H.264/MP4
 
 ### Tasks
@@ -317,7 +360,7 @@ func testEncodingFlow() async throws {
 
 ## Day 22: RecordingManager & File System
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Focus:** Coordinate capture + encoding + file management
 
 ### Tasks
