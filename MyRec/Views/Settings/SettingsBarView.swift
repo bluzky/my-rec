@@ -27,7 +27,6 @@ struct SettingsBarView: View {
                     .frame(width: 50, height: 50)
             }
             .buttonStyle(.plain)
-            .delayedTooltip("Close region selection", delay: 2.0)
 
             Divider()
                 .frame(height: 30)
@@ -40,21 +39,18 @@ struct SettingsBarView: View {
                     isSelected: false,
                     help: "Select Entire Screen"
                 ) { }
-                .delayedTooltip("Record entire screen", delay: 2.0)
 
                 CaptureButton(
                     icon: "macwindow",
                     isSelected: false,
                     help: "Select Window"
                 ) { }
-                .delayedTooltip("Record a specific window", delay: 2.0)
 
                 CaptureButton(
                     icon: "rectangle.dashed",
                     isSelected: true,
                     help: "Select Region"
                 ) { }
-                .delayedTooltip("Record selected region", delay: 2.0)
             }
             .padding(.horizontal, 8)
 
@@ -156,7 +152,6 @@ struct SettingsBarView: View {
             }
             .menuStyle(.borderlessButton)
             .disabled(isRecording)
-            .delayedTooltip(isRecording ? "Cannot change settings while recording" : "Video quality settings (resolution & frame rate)", delay: 2.0)
             .accessibilityLabel("Quality Settings")
 
             Divider()
@@ -171,7 +166,6 @@ struct SettingsBarView: View {
                     help: "Capture Cursor",
                     isDisabled: isRecording
                 )
-                .delayedTooltip(isRecording ? "Cannot change while recording" : "Show/hide mouse cursor in recording", delay: 2.0)
 
                 ToggleIconButton(
                     icon: "video.fill",
@@ -179,7 +173,6 @@ struct SettingsBarView: View {
                     help: "Camera",
                     isDisabled: isRecording
                 )
-                .delayedTooltip(isRecording ? "Cannot change while recording" : "Record webcam video", delay: 2.0)
 
                 ToggleIconButton(
                     icon: "speaker.wave.2.fill",
@@ -187,7 +180,6 @@ struct SettingsBarView: View {
                     help: "System Sound",
                     isDisabled: isRecording
                 )
-                .delayedTooltip(isRecording ? "Cannot change while recording" : "Record system audio", delay: 2.0)
 
                 ToggleIconButton(
                     icon: "mic.fill",
@@ -195,7 +187,6 @@ struct SettingsBarView: View {
                     help: "Microphone",
                     isDisabled: isRecording
                 )
-                .delayedTooltip(isRecording ? "Cannot change while recording" : "Record microphone audio", delay: 2.0)
             }
             .padding(.horizontal, 8)
 
@@ -222,7 +213,6 @@ struct SettingsBarView: View {
             .buttonStyle(.plain)
             .disabled(isRecording)
             .opacity(isRecording ? 0.5 : 1.0)
-            .delayedTooltip(isRecording ? "Recording in progress" : "Start recording (⌘⌥1)", delay: 2.0)
             .onHover { hovering in
                 isHoveringRecord = hovering && !isRecording
             }
@@ -336,72 +326,6 @@ struct ToggleIconButton: View {
         .accessibilityLabel(help)
         .accessibilityValue(isOn ? "On" : "Off")
         .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
-
-// MARK: - Delayed Tooltip
-
-/// Custom tooltip that appears after hovering for specified duration
-struct DelayedTooltip: ViewModifier {
-    let text: String
-    let delay: TimeInterval
-    @State private var isHovering = false
-    @State private var showTooltip = false
-    @State private var hoverTask: Task<Void, Never>?
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(alignment: .top) {
-                if showTooltip {
-                    Text(text)
-                        .font(.system(size: 12))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.black.opacity(0.9))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5)
-                        )
-                        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
-                        .offset(y: -40)
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        .zIndex(1000)
-                }
-            }
-            .onHover { hovering in
-                isHovering = hovering
-
-                if hovering {
-                    // Start timer for showing tooltip
-                    hoverTask?.cancel()
-                    hoverTask = Task {
-                        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                        if !Task.isCancelled {
-                            await MainActor.run {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showTooltip = true
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Cancel timer and hide tooltip
-                    hoverTask?.cancel()
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        showTooltip = false
-                    }
-                }
-            }
-    }
-}
-
-extension View {
-    func delayedTooltip(_ text: String, delay: TimeInterval = 2.0) -> some View {
-        self.modifier(DelayedTooltip(text: text, delay: delay))
     }
 }
 

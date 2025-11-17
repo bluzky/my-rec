@@ -12,7 +12,7 @@ public class RegionSelectionViewModel: ObservableObject {
     private var resizeStartPoint: CGPoint?
     private var resizeStartRegion: CGRect?
     let screenBounds: CGRect // Coordinate space covered by the overlay window
-    private let minimumSize: CGSize = CGSize(width: 100, height: 100)
+    private let minimumSize: CGSize = CGSize(width: 50, height: 50)
     private let windowDetectionService = WindowDetectionService.shared
 
     public init(screenBounds: CGRect = NSScreen.main?.frame ?? .zero) {
@@ -47,7 +47,8 @@ public class RegionSelectionViewModel: ObservableObject {
             CGRect(origin: origin, size: size)
         )
 
-        selectedRegion = constrainToScreen(screenRect)
+        // Apply snapping and constraining
+        selectedRegion = snapToEdges(constrainToScreen(screenRect))
     }
 
     /// Handle drag gesture end
@@ -97,6 +98,38 @@ public class RegionSelectionViewModel: ObservableObject {
         return constrainedRect
     }
 
+    /// Snap rectangle edges to screen bounds when close enough (magnetic effect)
+    internal func snapToEdges(_ rect: CGRect, threshold: CGFloat = 15.0) -> CGRect {
+        var snappedRect = rect
+
+        let minX = screenBounds.minX
+        let minY = screenBounds.minY
+        let maxX = screenBounds.maxX
+        let maxY = screenBounds.maxY
+
+        // Snap left edge
+        if abs(snappedRect.minX - minX) <= threshold {
+            snappedRect.origin.x = minX
+        }
+
+        // Snap right edge
+        if abs(snappedRect.maxX - maxX) <= threshold {
+            snappedRect.origin.x = maxX - snappedRect.width
+        }
+
+        // Snap top edge
+        if abs(snappedRect.maxY - maxY) <= threshold {
+            snappedRect.origin.y = maxY - snappedRect.height
+        }
+
+        // Snap bottom edge
+        if abs(snappedRect.minY - minY) <= threshold {
+            snappedRect.origin.y = minY
+        }
+
+        return snappedRect
+    }
+
     // MARK: - Multi-Monitor Support
 
     /// Get the display that contains the specified region
@@ -134,9 +167,9 @@ public class RegionSelectionViewModel: ObservableObject {
 
         let updatedRegion = resizedRegion(from: region, handle: handle, delta: screenDelta)
 
-        // Enforce minimum size and constrain to screen
+        // Enforce minimum size and constrain to screen with snapping
         if updatedRegion.width >= minimumSize.width && updatedRegion.height >= minimumSize.height {
-            selectedRegion = constrainToScreen(updatedRegion)
+            selectedRegion = snapToEdges(constrainToScreen(updatedRegion))
         }
     }
 
@@ -216,8 +249,18 @@ public class RegionSelectionViewModel: ObservableObject {
 
     /// Check for window under cursor and update hover state
     func updateHoveredWindow(at location: CGPoint) {
-        guard !isDragging && !isResizing && selectedRegion == nil else {
-            // Don't detect windows during drag/resize operations or when a region is already selected
+        // Don't detect windows during drag/resize operations
+        guard !isDragging && !isResizing else {
+            hoveredWindow = nil
+            isHoveringOverWindow = false
+            return
+        }
+
+        // Don't detect windows when a region is already selected
+        // User must press ESC to cancel selection first
+        guard selectedRegion == nil else {
+            hoveredWindow = nil
+            isHoveringOverWindow = false
             return
         }
 

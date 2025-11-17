@@ -52,7 +52,19 @@ public class RegionSelectionWindow: NSWindow {
         // Set up escape key monitoring
         let keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { // Escape key code
-                self?.hide()
+                guard let self = self else { return event }
+
+                // If a region is selected, clear it (back to select mode)
+                if self.viewModel.selectedRegion != nil {
+                    self.viewModel.selectedRegion = nil
+                    self.viewModel.clearWindowHover()
+                    // Re-trigger window detection at current mouse position
+                    let currentMouseLocation = NSEvent.mouseLocation
+                    self.viewModel.updateHoveredWindow(at: currentMouseLocation)
+                } else {
+                    // If no region selected, close the window
+                    self.hide()
+                }
                 return nil // Consume the event
             }
             return event // Let other key events pass through

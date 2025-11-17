@@ -430,11 +430,13 @@ class MockRecordingGenerator {
 - [x] Integrate with AppDelegate and Preview Dialog
 
 **Day 17-18:** Polish & Integration
-- [ ] Polish Settings Bar
-- [ ] Enhance Status Bar menu
-- [ ] Polish Region Selection UX
-- [ ] Add countdown animation
-- [ ] Connect all UI components
+- [x] Polish Settings Bar (removed tooltips, kept hover effects)
+- [x] Enhance Status Bar menu (timer, recording states)
+- [x] Polish Region Selection UX (dimming overlay, snap-to-edge, default full-screen bounding box)
+- [x] Add countdown animation (3-2-1 with fade/scale effects)
+- [x] Connect all UI components (complete user journey working)
+- [x] ESC key behavior (clear selection or close window)
+- [x] Auto-open preview after recording stops
 
 **Day 19:** Testing & Refinement
 - [ ] Test complete UI flow
@@ -499,7 +501,7 @@ All of this works with mock data and placeholder visuals!
 
 ---
 
-**Status:** Day 15-16 completed - Trim Dialog fully implemented
+**Status:** Day 17-18 completed - UI Polish & Integration complete
 **Target:** Complete all UI by end of Week 4
-**Next Step:** Polish & Integration (Day 17-18)
-**Completed:** Day 10-16 (Mock data, Settings Dialog, Home Page, Preview Dialog, Trim Dialog)
+**Next Step:** Testing & Refinement (Day 19)
+**Completed:** Day 10-18 (Mock data, Settings Dialog, Home Page, Preview Dialog, Trim Dialog, Polish & Integration)
