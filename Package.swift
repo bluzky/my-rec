@@ -29,6 +29,7 @@ let package = Package(
                 "Services/WindowDetection/WindowDetectionService.swift",
                 "Services/Keyboard/KeyboardShortcutManager.swift",
                 "Services/Capture/ScreenCaptureEngine.swift",
+                "Services/Video/VideoEncoder.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",
