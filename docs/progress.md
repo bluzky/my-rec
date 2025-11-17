@@ -1,12 +1,12 @@
 # MyRec Development Progress
 
-**Last Updated:** November 16, 2025
+**Last Updated:** November 18, 2025
 
 ## Project Status
 
-**Current Phase:** UI-First Implementation (Days 10-12)
-**Overall Progress:** Week 2, Day 12 completed
-**Next Milestone:** Recording History Window (Day 13)
+**Current Phase:** Backend Integration (Week 5 start)
+**Overall Progress:** UI-first foundation complete through Day 18
+**Next Milestone:** ScreenCaptureKit + encoding integration (Day 19-23)
 
 ---
 
@@ -301,7 +301,7 @@ Paused:        [00:04:27] [▶] [⏹]
 **Total Tests:** 89
 **Passing:** 89 ✅
 **Failing:** 0
-**Last Run:** November 16, 2025
+**Last Run:** November 17, 2025
 
 **Test Breakdown by Category:**
 - Core Models: 29 tests ✅ (+16 from Day 10: MockRecording)
@@ -314,27 +314,34 @@ Paused:        [00:04:27] [▶] [⏹]
 
 ---
 
+## Week 4: UI Polish & Integration ✅
+
+**Status:** COMPLETED (Days 17-18)
+
+**Highlights:**
+- ✅ Countdown overlay with 3-2-1 animation and smooth transitions
+- ✅ Region selection UX polish (dimming overlay, snap-to-edges, ESC behaviors, drag/resize fixes)
+- ✅ End-to-end mock workflow wired: Home → Region Select → Countdown → Recording → Preview → Trim
+- ✅ Settings Bar visual polish (hover/active states, tooltips removed)
+- ✅ Status bar inline controls refined (idle/recording/paused)
+
+**Reference:** See `docs/progress/day17-18-polish-integration-summary.md` for detailed changes.
+
+---
+
 ## Upcoming Milestones
 
-### Week 3: UI-First Implementation Continuation (Nov 18-24)
-- Recording History Window with mock data
-- Preview Dialog with video player placeholder
-- Region Selection UX polish (countdown, animations)
-- Enhanced Settings Bar state integration
+### Week 5: Backend Integration (Days 19-23)
+- ScreenCaptureKit capture pipeline + permission handling
+- H.264 encoding with AVAssetWriter and saving to `~/Movies`
+- RecordingManager + FileManagerService coordination
+- Wire UI (StatusBarController, AppDelegate, Preview Dialog) to real recordings
+- Integration tests for end-to-end recording flow
 
-### Week 4: Recording Engine Foundation (Nov 25-Dec 1)
-- Audio capture (system + microphone)
-- AVAssetWriter integration
-- Recording state machine
-- File naming and save location
-- Actual recording implementation
-
-### Phase 2: Recording Controls & Settings (Weeks 5-8)
-- Advanced settings UI
-- Hotkey customization
-- Camera preview integration
-- Audio level meters
-- Production-ready recording features
+### Week 6: Audio Integration (Preview)
+- Plan system/microphone capture paths and sync strategy
+- Outline AAC encoding pipeline
+- Research audio/video synchronization constraints
 
 ---
 

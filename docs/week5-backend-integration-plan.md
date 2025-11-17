@@ -2,7 +2,7 @@
 
 **Phase:** Backend Integration (Start)
 **Duration:** Days 19-23 (5 days)
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Goal:** Replace mock data with real screen recording functionality
 
 ---
@@ -39,7 +39,7 @@ By end of Week 5, the app should:
 
 ## Day 19: Testing & Documentation Cleanup
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Focus:** Prepare for backend integration
 
 ### Tasks
@@ -56,6 +56,24 @@ By end of Week 5, the app should:
 - `plan/master implementation plan.md`
 - `docs/week5-backend-integration-plan.md` (this file)
 
+### Current UI API Surface (mock phase)
+- **HomePageViewModel**: posts `.startRecording`, `.openSettings`, `.openPreview`/`.openTrim` with `MockRecording` payload; manages recent mock recordings list (5 items).
+- **StatusBarController**: publishes `elapsedTime`, `simulatedFileSize`, `isRecording`, `isPaused`; posts `.pauseRecording` and `.stopRecording`; listens for `.recordingStateChanged` to sync menu/inline controls.
+- **AppDelegate**: observes notifications to show windows; `handleStopRecording` currently builds `MockRecording` from `StatusBarController` timers and opens preview.
+- **RegionSelectionViewModel**: exposes `selectedRegion: CGRect?` in screen coordinates; handles drag/resize with edge snapping and minimum size; `getDisplayForRegion(_:)` for multi-monitor; converts SwiftUI coords via `convertToScreenCoordinates`.
+- **Preview/Trim Dialogs**: driven by `MockRecording` payloads; preview actions fire `.openTrim`; trim dialog currently mock-only.
+
+### NotificationCenter Events & Payloads
+- `.startRecording`: no payload (Home/Tray → AppDelegate shows region selection)
+- `.pauseRecording`: no payload (tray toggle; currently demo only)
+- `.stopRecording`: no payload (tray stop; AppDelegate creates mock recording + opens preview)
+- `.openSettings`: no payload (opens settings window)
+- `.showDashboard`: no payload (returns to home window)
+- `.openPreview`: `userInfo["recording"]` = `MockRecording`
+- `.openTrim`: `userInfo["recording"]` = `MockRecording`
+- `.recordingStateChanged`: `object` = `RecordingState` (used by StatusBarController, RegionSelectionView)
+- `.closeTrim`: no payload (future use)
+
 #### 2. UI Flow Testing ✅ Target
 - [ ] Test complete user journey (Home → Record → Stop → Preview)
 - [ ] Test all recording states (Idle → Recording → Paused → Idle)
@@ -63,6 +81,13 @@ By end of Week 5, the app should:
 - [ ] Test region selection modes (full-screen, window, custom)
 - [ ] Test Settings Dialog persistence
 - [ ] Document any UI bugs or edge cases
+
+**Execution Status (Day 19):** Pending manual run in this environment. Use Day 17-18 polish build as baseline; rerun end-to-end flows to capture any regressions before backend wiring.
+
+**Notes/Watch Areas:**
+- Confirm countdown overlay timing aligns with recording start event.
+- Verify pause/resume toggle states in status bar stay in sync with Home/RegionSelection UI.
+- Ensure Settings persistence still holds after recent UI polish.
 
 **Test Scenarios:**
 ```

@@ -4,9 +4,9 @@
 **Project Name:** MyRec
 **Platform:** macOS
 **Project Duration:** 12-16 weeks (adjusted for UI-first approach)
-**Status:** UI-First Phase - Week 3 Complete ✅
-**Strategy:** UI-First Development (Changed from bottom-up approach)
-**Last Updated:** November 16, 2025
+**Status:** Backend Integration - Week 5 Start 🔄
+**Strategy:** UI-First foundation complete; transitioning to backend integration
+**Last Updated:** November 18, 2025
 
 ---
 
@@ -18,10 +18,10 @@ MyRec is a lightweight, minimalist screen recording application for macOS with e
 
 ## Project Progress
 
-**Current Phase:** UI-First Development (Weeks 1-4)
-**Current Week:** Week 3 ✅ Complete, Week 4 🔄 Next
-**Overall Progress:** ~25% (UI Foundation Complete)
-**Strategy Change:** Pivoted to UI-first approach on Day 8 for faster iteration and early UX validation
+**Current Phase:** Backend Integration (Week 5)
+**Current Week:** Week 5 🔄 In Progress (UI-first Weeks 1-4 complete)
+**Overall Progress:** ~35% (UI foundation done; recording engine integration in progress)
+**Strategy Change:** Pivoted to UI-first approach on Day 8; now layering backend services onto polished UI
 
 ### Week 1 Summary (November 15, 2025)
 
@@ -54,7 +54,7 @@ MyRec is a lightweight, minimalist screen recording application for macOS with e
 
 ---
 
-### Week 2-3 Summary (November 16, 2025)
+### Week 2-4 Summary (November 17, 2025)
 
 **Status:** ✅ **COMPLETE** - UI-First Development Phase Complete
 
@@ -85,11 +85,19 @@ MyRec is a lightweight, minimalist screen recording application for macOS with e
 - ✅ Dashboard menu item in status bar
 - ✅ Auto-close home page on recording start
 
-**Next Up (Week 4):**
-- 🔲 Preview Dialog with video placeholder
-- 🔲 Trim Dialog with timeline component
-- 🔲 Countdown animation (3-2-1)
-- 🔲 Complete UI polish and integration
+**Week 4 (Days 17-18):**
+- ✅ Countdown overlay with 3-2-1 animation
+- ✅ Region selection UX polish (dimming overlay, snap-to-edges, ESC behavior)
+- ✅ End-to-end mock flow wired: Home → Region Select → Countdown → Recording → Preview → Trim
+- ✅ Settings Bar visual polish (hover/active states, tooltips removed)
+- ✅ Status bar inline controls refined (idle/recording/paused)
+
+**Next Up (Week 5):**
+- 🔄 ScreenCaptureKit capture pipeline + permissions
+- 🔄 Video encoding (H.264) and file save to `~/Movies`
+- 🔄 RecordingManager + FileManagerService coordination
+- 🔄 UI integration for real recordings (StatusBarController, AppDelegate, Preview Dialog)
+- 🔄 Integration tests for full recording flow
 
 ---
 
@@ -130,9 +138,9 @@ On Day 8, we pivoted from a traditional bottom-up approach (backend → frontend
 | System Tray | ✅ Complete | Week 2 | Recording states, timer |
 | Home Page/Dashboard | ✅ Complete | Week 3 | Recent recordings, actions |
 | Keyboard Shortcuts | ✅ Complete | Week 2 | Global hotkey support |
-| Preview Dialog | 🔲 Pending | Week 4 | Video playback placeholder |
-| Trim Dialog | 🔲 Pending | Week 4 | Timeline with scrubber |
-| Countdown Animation | 🔲 Pending | Week 4 | 3-2-1 overlay |
+| Preview Dialog | ✅ Complete (mock) | Week 4 | Placeholder playback + toolbar actions |
+| Trim Dialog | ✅ Complete (mock) | Week 4 | Timeline with handles (mock data) |
+| Countdown Animation | ✅ Complete | Week 4 | 3-2-1 overlay |
 
 ### Mock Data Infrastructure
 
