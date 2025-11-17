@@ -407,10 +407,17 @@ class MockRecordingGenerator {
 - [x] Remove Recording History feature (simplified approach)
 
 **Day 14:** Preview Dialog
-- [ ] Build Preview Dialog layout
-- [ ] Create video placeholder
-- [ ] Add playback controls (mock)
-- [ ] Wire up metadata display
+- [x] Build Preview Dialog layout
+- [x] Create video placeholder
+- [x] Add playback controls (mock)
+- [x] Wire up metadata display
+- [x] Add toolbar with action buttons (Trim, Open Folder, Delete, Share)
+- [x] Implement 2-row control layout (progress + controls)
+- [x] Add inline volume control with slider
+- [x] Add playback speed dropdown menu (0.5x - 2x)
+- [x] Add fullscreen button
+- [x] Keyboard shortcuts (Space, ← →)
+- [x] Remove sidebar for full-width video player
 
 ### Week 4: Trim UI & Polish (Nov 25-Dec 1)
 
@@ -490,7 +497,7 @@ All of this works with mock data and placeholder visuals!
 
 ---
 
-**Status:** Week 3 completed - Home Page/Dashboard implemented
+**Status:** Day 14 completed - Preview Dialog fully implemented
 **Target:** Complete all UI by end of Week 4
-**Next Step:** Build Preview Dialog (Day 14)
-**Completed:** Day 10-13 (Mock data, Settings Dialog, Home Page with recordings list)
+**Next Step:** Build Trim Dialog (Day 15-16)
+**Completed:** Day 10-14 (Mock data, Settings Dialog, Home Page, Preview Dialog)

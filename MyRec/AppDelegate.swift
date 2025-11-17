@@ -16,6 +16,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var regionSelectionWindow: RegionSelectionWindow?
     var settingsWindowController: SettingsWindowController?
     var homePageWindowController: HomePageWindowController?
+    var previewDialogWindowController: PreviewDialogWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Show dock icon for window-based app
@@ -70,9 +71,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for open preview notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenPreview(_:)),
+            name: .openPreview,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
         print("✅ Registered observer for showDashboard notification")
+        print("✅ Registered observer for openPreview notification")
     }
 
     private func addTestMenuItems() {
@@ -128,6 +138,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         showDashboard()
     }
 
+    @objc private func handleOpenPreview(_ notification: Notification) {
+        print("🎬 Preview clicked - showing preview dialog")
+        if let recording = notification.userInfo?["recording"] as? MockRecording {
+            showPreviewDialog(for: recording)
+        } else {
+            print("⚠️ No recording data found in notification")
+        }
+    }
+
     private func showRegionSelection() {
         // Hide existing window if any
         regionSelectionWindow?.close()
@@ -151,6 +170,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showDashboard() {
         homePageWindowController?.show()
         print("✅ Dashboard shown")
+    }
+
+    private func showPreviewDialog(for recording: MockRecording) {
+        // Create new preview dialog window controller
+        previewDialogWindowController = PreviewDialogWindowController(recording: recording)
+        previewDialogWindowController?.show()
+        print("✅ Preview dialog shown for: \(recording.filename)")
     }
 
     // MARK: - Demo Methods for System Tray Testing
