@@ -193,61 +193,58 @@ public class StatusBarController: NSObject, ObservableObject {
     private func buildIdleMenu() {
         menu?.removeAllItems()
 
-        // Title item
-        let titleItem = NSMenuItem(title: "● MyRec", action: nil, keyEquivalent: "")
-        titleItem.isEnabled = false
-        menu?.addItem(titleItem)
+        // Start Recording
+        recordMenuItem = NSMenuItem(
+            title: "Start Recording",
+            action: #selector(recordScreen),
+            keyEquivalent: ""
+        )
+        recordMenuItem?.target = self
+        recordMenuItem?.image = NSImage(systemSymbolName: "record.circle", accessibilityDescription: "Record")
+        menu?.addItem(recordMenuItem!)
 
         menu?.addItem(NSMenuItem.separator())
 
         // Dashboard
         let dashboardMenuItem = NSMenuItem(
-            title: "🏠 Show Dashboard",
+            title: "Dashboard",
             action: #selector(showDashboard),
             keyEquivalent: ""
         )
         dashboardMenuItem.target = self
+        dashboardMenuItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Dashboard")
         menu?.addItem(dashboardMenuItem)
-
-        menu?.addItem(NSMenuItem.separator())
-
-        // Record option
-        recordMenuItem = NSMenuItem(
-            title: "▶ Start Recording",
-            action: #selector(recordScreen),
-            keyEquivalent: ""
-        )
-        recordMenuItem?.target = self
-        menu?.addItem(recordMenuItem!)
-
-        menu?.addItem(NSMenuItem.separator())
 
         // Settings
         let settingsMenuItem = NSMenuItem(
-            title: "⚙ Settings...",
+            title: "Settings",
             action: #selector(openSettings),
             keyEquivalent: ","
         )
         settingsMenuItem.target = self
+        settingsMenuItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
         menu?.addItem(settingsMenuItem)
 
         menu?.addItem(NSMenuItem.separator())
 
-        // About and Quit
+        // About
         let aboutMenuItem = NSMenuItem(
-            title: "About MyRec",
+            title: "About",
             action: #selector(showAbout),
             keyEquivalent: ""
         )
         aboutMenuItem.target = self
+        aboutMenuItem.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "About")
         menu?.addItem(aboutMenuItem)
 
+        // Quit
         let quitMenuItem = NSMenuItem(
-            title: "Quit MyRec",
+            title: "Quit",
             action: #selector(quit),
             keyEquivalent: "q"
         )
         quitMenuItem.target = self
+        quitMenuItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Quit")
         menu?.addItem(quitMenuItem)
     }
 
