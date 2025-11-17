@@ -9,6 +9,9 @@ struct RegionSelectionView: View {
     @ObservedObject var viewModel: RegionSelectionViewModel
     let onClose: () -> Void
 
+    @State private var showCountdown = false
+    @State private var overlayOpacity: Double = 0.0
+
     init(viewModel: RegionSelectionViewModel, onClose: @escaping () -> Void = {}) {
         self.viewModel = viewModel
         self.onClose = onClose
@@ -16,16 +19,35 @@ struct RegionSelectionView: View {
 
     var body: some View {
         ZStack {
+            // Default: show full screen bounds when no window hover and no selection
+            if !viewModel.isHoveringOverWindow && viewModel.selectedRegion == nil {
+                let fullScreenSwiftUI = convertScreenToSwiftUICoordinates(viewModel.screenBounds)
+
+                // Dimming overlay outside full screen
+                DimmingOverlay(cutoutRegion: fullScreenSwiftUI, opacity: overlayOpacity)
+
+                // Full screen bounding box (like window hover)
+                FullScreenBoundingBox(bounds: fullScreenSwiftUI)
+            }
+
             // Window hover highlight
             if viewModel.isHoveringOverWindow, let window = viewModel.hoveredWindow {
                 // Window bounds are in screen coordinates, convert to SwiftUI coordinates for display
                 let swiftUIBounds = convertScreenToSwiftUICoordinates(window.bounds)
+
+                // Dimming overlay outside hovered window
+                DimmingOverlay(cutoutRegion: swiftUIBounds, opacity: overlayOpacity)
+
                 WindowHighlightOverlay(window: window, bounds: swiftUIBounds)
             }
 
             // Selection area (if region exists)
             if let screenRegion = viewModel.selectedRegion {
                 let swiftUIRegion = convertScreenToSwiftUICoordinates(screenRegion)
+
+                // Dimming overlay outside selection
+                DimmingOverlay(cutoutRegion: swiftUIRegion, opacity: overlayOpacity)
+
                 SelectionOverlay(region: swiftUIRegion, viewModel: viewModel)
             }
 
@@ -34,7 +56,7 @@ struct RegionSelectionView: View {
                 Spacer()
                 SettingsBarView(
                     settingsManager: SettingsManager.shared,
-                    regionSize: viewModel.selectedRegion?.size ?? CGSize(width: 0, height: 0),
+                    regionSize: viewModel.selectedRegion?.size ?? viewModel.screenBounds.size,
                     onClose: {
                         self.viewModel.reset()
                         self.onClose()
@@ -48,9 +70,24 @@ struct RegionSelectionView: View {
                 .frame(maxWidth: .infinity) // Center horizontally
                 .padding(.bottom, 40)
             }
+            .opacity(showCountdown ? 0 : 1) // Hide settings bar during countdown
+
+            // Countdown overlay
+            if showCountdown {
+                CountdownOverlay {
+                    handleCountdownComplete()
+                }
+                .transition(.opacity)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .coordinateSpace(name: RegionSelectionCoordinateSpace.overlay)
+        .onAppear {
+            // Fade in the overlay
+            withAnimation(.easeOut(duration: 0.3)) {
+                overlayOpacity = 1.0
+            }
+        }
         .onHover { isHovering in
             if !isHovering {
                 viewModel.clearWindowHover()
@@ -59,38 +96,37 @@ struct RegionSelectionView: View {
         .gesture(
             DragGesture()
                 .onChanged { value in
+                    // Only allow starting a new drag when no region is selected
+                    // Once dragging has started (isDragging = true), allow it to continue
+                    if !viewModel.isDragging && viewModel.selectedRegion != nil {
+                        return
+                    }
+
                     // Clear window hover when dragging starts
                     if !viewModel.isDragging {
                         viewModel.clearWindowHover()
                     }
                     // Only handle drag if not resizing
                     if !viewModel.isResizing {
-                        // If a region is already selected, don't create a new one on drag
-                        // This allows users to see the resize handles instead of starting a new selection
-                        if viewModel.selectedRegion == nil {
-                            viewModel.handleDragChanged(value)
-                        }
+                        viewModel.handleDragChanged(value)
                     }
                 }
                 .onEnded { value in
-                    if !viewModel.isResizing {
-                        // Only handle drag end if we were creating a new selection
-                        if viewModel.selectedRegion == nil {
-                            viewModel.handleDragEnded(value)
-                        }
+                    if !viewModel.isResizing && viewModel.isDragging {
+                        viewModel.handleDragEnded(value)
                     }
                 }
         )
         .onTapGesture(perform: {
+            // Only allow tap actions when no region is selected
+            guard self.viewModel.selectedRegion == nil else { return }
+
             // Check if tapping on a hovered window
             if self.viewModel.isHoveringOverWindow {
                 self.viewModel.selectHoveredWindow()
             } else {
-                // If a region is already selected and we're not hovering over a window,
-                // clear the selection to allow starting a new selection
-                if self.viewModel.selectedRegion != nil {
-                    self.viewModel.selectedRegion = nil
-                }
+                // If no selection and no window hover, clicking selects the full screen
+                self.viewModel.selectedRegion = self.viewModel.screenBounds
             }
         })
         // Note: Escape key handling will be added at the window level for macOS 12 compatibility
@@ -98,18 +134,31 @@ struct RegionSelectionView: View {
 
     /// Handle the record button action
     private func handleRecordButton() {
-        // TODO: Implement actual recording logic
-        // For now, post a notification to start recording with the selected region
+        // If no explicit selection, use full screen
+        if viewModel.selectedRegion == nil {
+            viewModel.selectedRegion = viewModel.screenBounds
+        }
+
+        print("🎬 Starting countdown before recording")
+        // Show countdown overlay
+        withAnimation(.easeInOut(duration: 0.3)) {
+            showCountdown = true
+        }
+    }
+
+    /// Handle countdown completion
+    private func handleCountdownComplete() {
         guard let selectedRegion = viewModel.selectedRegion else {
             print("⚠️ No region selected")
             return
         }
 
-        print("🎬 Starting recording with region: \(selectedRegion)")
-        // Post notification with selected region
+        print("🎬 Countdown complete - starting recording with region: \(selectedRegion)")
+
+        // Trigger recording state change
         NotificationCenter.default.post(
-            name: Notification.Name("BeginRecording"),
-            object: selectedRegion
+            name: .recordingStateChanged,
+            object: RecordingState.recording(startTime: Date())
         )
 
         // Close the region selection window
@@ -136,9 +185,9 @@ struct SelectionOverlay: View {
 
     var body: some View {
         ZStack {
-            // Selection border - blue border only (no white outline)
+            // Selection border - bright blue for better contrast
             Rectangle()
-                .stroke(Color.blue, lineWidth: 2)
+                .stroke(Color.blue.opacity(0.8), lineWidth: 3)
                 .frame(width: region.width, height: region.height)
                 .position(x: region.midX, y: region.midY)
 
@@ -180,6 +229,43 @@ extension ResizeHandle: Hashable {
     }
 }
 
+/// Dimming overlay that dims everything except the cutout region
+struct DimmingOverlay: View {
+    let cutoutRegion: CGRect
+    let opacity: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Top rectangle (above selection)
+                Rectangle()
+                    .fill(Color.black.opacity(0.3 * opacity))
+                    .frame(width: geometry.size.width, height: cutoutRegion.minY)
+                    .position(x: geometry.size.width / 2, y: cutoutRegion.minY / 2)
+
+                // Bottom rectangle (below selection)
+                Rectangle()
+                    .fill(Color.black.opacity(0.3 * opacity))
+                    .frame(width: geometry.size.width, height: geometry.size.height - cutoutRegion.maxY)
+                    .position(x: geometry.size.width / 2, y: cutoutRegion.maxY + (geometry.size.height - cutoutRegion.maxY) / 2)
+
+                // Left rectangle (left of selection)
+                Rectangle()
+                    .fill(Color.black.opacity(0.3 * opacity))
+                    .frame(width: cutoutRegion.minX, height: cutoutRegion.height)
+                    .position(x: cutoutRegion.minX / 2, y: cutoutRegion.midY)
+
+                // Right rectangle (right of selection)
+                Rectangle()
+                    .fill(Color.black.opacity(0.3 * opacity))
+                    .frame(width: geometry.size.width - cutoutRegion.maxX, height: cutoutRegion.height)
+                    .position(x: cutoutRegion.maxX + (geometry.size.width - cutoutRegion.maxX) / 2, y: cutoutRegion.midY)
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
 /// Label showing the dimensions of the selected region
 struct DimensionLabel: View {
     let width: CGFloat
@@ -195,6 +281,18 @@ struct DimensionLabel: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color.black.opacity(0.75))
             )
+    }
+}
+
+/// Full screen bounding box (default state)
+struct FullScreenBoundingBox: View {
+    let bounds: CGRect
+
+    var body: some View {
+        Rectangle()
+            .stroke(Color.green, lineWidth: 3)
+            .frame(width: bounds.width, height: bounds.height)
+            .position(x: bounds.midX, y: bounds.midY)
     }
 }
 

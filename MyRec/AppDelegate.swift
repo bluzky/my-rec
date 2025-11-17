@@ -88,11 +88,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for stop recording notification to show preview
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleStopRecording),
+            name: .stopRecording,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
         print("✅ Registered observer for showDashboard notification")
         print("✅ Registered observer for openPreview notification")
         print("✅ Registered observer for openTrim notification")
+        print("✅ Registered observer for stopRecording notification")
     }
 
     private func addTestMenuItems() {
@@ -164,6 +173,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             print("⚠️ No recording data found in notification")
         }
+    }
+
+    @objc private func handleStopRecording() {
+        print("⏹ Recording stopped - creating mock recording and showing preview")
+
+        // Create filename with timestamp
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMddHHmmss"
+        let timestamp = dateFormatter.string(from: Date())
+
+        // Create a mock recording for the just-completed session
+        let mockRecording = MockRecording(
+            id: UUID(),
+            filename: "REC-\(timestamp).mp4",
+            duration: statusBarController?.elapsedTime ?? 30.0,
+            resolution: SettingsManager.shared.defaultSettings.resolution,
+            frameRate: SettingsManager.shared.defaultSettings.frameRate,
+            fileSize: statusBarController?.simulatedFileSize ?? Int64(150_000_000),
+            createdDate: Date(),
+            thumbnailColor: .blue
+        )
+
+        // Show preview dialog for this recording
+        showPreviewDialog(for: mockRecording)
     }
 
     private func showRegionSelection() {
