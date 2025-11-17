@@ -17,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var settingsWindowController: SettingsWindowController?
     var homePageWindowController: HomePageWindowController?
     var previewDialogWindowController: PreviewDialogWindowController?
+    var trimDialogWindowController: TrimDialogWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Show dock icon for window-based app
@@ -79,10 +80,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for open trim notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenTrim(_:)),
+            name: .openTrim,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
         print("✅ Registered observer for showDashboard notification")
         print("✅ Registered observer for openPreview notification")
+        print("✅ Registered observer for openTrim notification")
     }
 
     private func addTestMenuItems() {
@@ -147,6 +157,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    @objc private func handleOpenTrim(_ notification: Notification) {
+        print("✂️ Trim clicked - showing trim dialog")
+        if let recording = notification.userInfo?["recording"] as? MockRecording {
+            showTrimDialog(for: recording)
+        } else {
+            print("⚠️ No recording data found in notification")
+        }
+    }
+
     private func showRegionSelection() {
         // Hide existing window if any
         regionSelectionWindow?.close()
@@ -177,6 +196,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         previewDialogWindowController = PreviewDialogWindowController(recording: recording)
         previewDialogWindowController?.show()
         print("✅ Preview dialog shown for: \(recording.filename)")
+    }
+
+    private func showTrimDialog(for recording: MockRecording) {
+        // Create new trim dialog window controller
+        trimDialogWindowController = TrimDialogWindowController(recording: recording)
+        print("✅ Trim dialog shown for: \(recording.filename)")
     }
 
     // MARK: - Demo Methods for System Tray Testing

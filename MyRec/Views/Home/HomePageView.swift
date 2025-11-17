@@ -78,6 +78,7 @@ struct HomePageView: View {
                     HomeRecordingRowView(
                         recording: recording,
                         onPlay: { viewModel.playRecording(recording) },
+                        onTrim: { viewModel.trimRecording(recording) },
                         onDelete: { viewModel.deleteRecording(recording) },
                         onShare: { viewModel.shareRecording(recording) }
                     )
@@ -118,6 +119,7 @@ struct HomePageView: View {
 struct HomeRecordingRowView: View {
     let recording: MockRecording
     let onPlay: () -> Void
+    let onTrim: () -> Void
     let onDelete: () -> Void
     let onShare: () -> Void
 
@@ -161,6 +163,7 @@ struct HomeRecordingRowView: View {
 
                 // Action buttons (always visible)
                 HStack(spacing: 12) {
+                    ActionIconButton(icon: "scissors", action: onTrim)
                     ActionIconButton(icon: "folder", action: {})
                     ActionIconButton(icon: "trash", action: onDelete, hoverColor: .red)
                     ActionIconButton(icon: "square.and.arrow.up", action: onShare)

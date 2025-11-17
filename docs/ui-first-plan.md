@@ -2,7 +2,7 @@
 
 **Strategy:** Build all UI components with mock/placeholder data first, then hook up actual recording implementation later.
 
-**Last Updated:** November 16, 2025 (Day 13 completed)
+**Last Updated:** November 17, 2025 (Day 15-16 completed)
 
 ---
 
@@ -422,10 +422,12 @@ class MockRecordingGenerator {
 ### Week 4: Trim UI & Polish (Nov 25-Dec 1)
 
 **Day 15-16:** Trim Dialog
-- [ ] Build Trim Dialog UI
-- [ ] Create timeline component
-- [ ] Implement draggable handles
-- [ ] Add frame preview placeholder
+- [x] Build Trim Dialog UI
+- [x] Create timeline component with time markers
+- [x] Implement draggable start/end handles
+- [x] Add frame preview placeholder
+- [x] Wire up mock behavior (handle dragging, playback)
+- [x] Integrate with AppDelegate and Preview Dialog
 
 **Day 17-18:** Polish & Integration
 - [ ] Polish Settings Bar
@@ -497,7 +499,7 @@ All of this works with mock data and placeholder visuals!
 
 ---
 
-**Status:** Day 14 completed - Preview Dialog fully implemented
+**Status:** Day 15-16 completed - Trim Dialog fully implemented
 **Target:** Complete all UI by end of Week 4
-**Next Step:** Build Trim Dialog (Day 15-16)
-**Completed:** Day 10-14 (Mock data, Settings Dialog, Home Page, Preview Dialog)
+**Next Step:** Polish & Integration (Day 17-18)
+**Completed:** Day 10-16 (Mock data, Settings Dialog, Home Page, Preview Dialog, Trim Dialog)

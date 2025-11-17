@@ -62,6 +62,16 @@ class HomePageViewModel: ObservableObject {
         )
     }
 
+    /// Trim a recording
+    func trimRecording(_ recording: MockRecording) {
+        print("✂️ Trimming recording: \(recording.filename)")
+        NotificationCenter.default.post(
+            name: .openTrim,
+            object: nil,
+            userInfo: ["recording": recording]
+        )
+    }
+
     /// Share a recording
     func shareRecording(_ recording: MockRecording) {
         print("📤 Sharing recording: \(recording.filename)")

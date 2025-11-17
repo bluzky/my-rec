@@ -67,7 +67,7 @@ struct PreviewDialogView: View {
             playbackControlsBar
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
-                .background(Color.black.opacity(0.95))
+                .background(Color(red: 0.067, green: 0.094, blue: 0.153).opacity(0.95)) // Dark gray 900
         }
     }
 
@@ -75,8 +75,8 @@ struct PreviewDialogView: View {
 
     private var videoPlaceholder: some View {
         ZStack {
-            // Black background
-            Color.black
+            // Dark gray 900 background
+            Color(red: 0.067, green: 0.094, blue: 0.153)
 
             VStack(spacing: 16) {
                 // Play/pause icon
