@@ -19,4 +19,14 @@ enum Resolution: String, Codable, CaseIterable {
 
     var width: Int { dimensions.width }
     var height: Int { dimensions.height }
+
+    var displayName: String {
+        switch self {
+        case .hd: return "720P"
+        case .fullHD: return "1080P"
+        case .twoK: return "2K"
+        case .fourK: return "4K"
+        case .custom: return "Custom"
+        }
+    }
 }
