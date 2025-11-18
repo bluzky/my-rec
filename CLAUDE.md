@@ -74,6 +74,106 @@ The application follows a multi-layer architecture:
 - Frame rates: 15, 24, 30, 60 FPS
 - MP4 container format
 
+## Development Methodology
+
+### Sprint-Based Development (1-Week Cycles)
+
+This project follows a structured, incremental development approach with weekly sprints:
+
+#### Weekly Sprint Structure
+
+**Directory Organization:**
+```
+plan/
+├── week-1/
+│   ├── progress.md           # Week overview: main goal + daily todo tracking
+│   ├── day1-plan.md         # Detailed plan for Day 1
+│   ├── day2-plan.md         # Detailed plan for Day 2
+│   └── ...
+├── week-2/
+│   └── ...
+└── master-progress.md       # Overall project progress tracking
+```
+
+#### Sprint Workflow
+
+**1. Sprint Planning (Start of Week)**
+- Create `week-N/` directory
+- Define week's main goal in `progress.md`
+- Create daily plan files (`day1-plan.md`, `day2-plan.md`, etc.)
+- Break down tasks into testable, incremental units
+- Prepare all planning documents before implementation begins
+
+**2. Daily Development**
+- Work from the day's plan file
+- Each day's work must be independently testable
+- For dependencies on future work: use console logs or placeholders
+- Build incrementally - verify each piece separately
+- At end of day:
+  - Update day plan with status and results
+  - Update week `progress.md` with completed tasks
+
+**3. Sprint Completion (End of Week)**
+- Review all daily outcomes
+- Update `progress.md` with final week status
+- Update `master-progress.md` with sprint achievements
+- Document any blockers or carry-over tasks
+
+#### Development Principles
+
+**Testability First:**
+- Every day's implementation must be verifiable
+- Write tests before or alongside code (TDD)
+- Use `swift test` to validate changes
+- Mock dependencies that aren't ready yet
+
+**Incremental Building:**
+- Start with smallest working unit
+- Add complexity gradually
+- Each commit should build successfully
+- Avoid "big bang" integrations
+
+**Documentation Updates:**
+- Update progress files in real-time
+- Document decisions and trade-offs
+- Keep master plan synchronized with reality
+- Track deviations from original estimates
+
+**Placeholder Strategy:**
+- Console logs for UI not yet implemented
+- Mock objects for future integrations
+- Stub methods with clear TODO comments
+- Always return valid data types (never crash)
+
+#### Example Daily Plan Structure
+
+```markdown
+# Week 5 - Day 1: File Manager Core Implementation
+
+## Goal
+Implement FileManager with save location management
+
+## Tasks
+- [ ] Create FileManager class structure
+- [ ] Implement save location validation
+- [ ] Add directory creation logic
+- [ ] Write unit tests for each method
+
+## Dependencies
+- SettingsManager (completed Week 4)
+
+## Testing
+- Test with valid/invalid paths
+- Verify directory creation
+- Check permission handling
+
+## Status
+[Updated at end of day]
+
+## Results
+[What was completed, blockers, next steps]
+```
+
 ## Build & Development Commands
 
 ### Prerequisites
