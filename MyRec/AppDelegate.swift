@@ -315,7 +315,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("🔄 AppDelegate: Stopping capture...")
 
                 // Stop capture + get output file
-                guard let videoURL = try await captureEngine?.stopCapture() else {
+                guard let tempVideoURL = try await captureEngine?.stopCapture() else {
                     print("❌ AppDelegate: No video URL returned from capture engine")
                     // Still show preview and reset on failure
                     showMockPreview()
@@ -324,28 +324,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
 
                 print("✅ AppDelegate: Recording stopped successfully")
-                print("📁 File saved: \(videoURL.path)")
+                print("📁 Temp file: \(tempVideoURL.path)")
                 print("📊 Total frames: \(frameCount)")
 
-                // Verify file exists and has content
-                if FileManager.default.fileExists(atPath: videoURL.path) {
-                    do {
-                        let fileSize = try FileManager.default.attributesOfItem(atPath: videoURL.path)[.size] as? Int64 ?? 0
-                        print("📏 File size: \(formatFileSize(fileSize))")
+                // Use FileManagerService to save file permanently
+                let metadata = try await FileManagerService.shared.saveVideoFile(from: tempVideoURL)
 
-                        if fileSize > 0 {
-                            // Open in QuickTime for manual verification
-                            NSWorkspace.shared.open(videoURL)
-                            print("✅ Opened video in QuickTime for verification")
-                        } else {
-                            print("⚠️ Warning: Video file is empty (0 bytes)")
-                        }
-                    } catch {
-                        print("⚠️ Warning: Could not get file size: \(error)")
-                    }
-                } else {
-                    print("❌ Warning: Video file not found at \(videoURL.path)")
-                }
+                print("✅ AppDelegate: File saved permanently")
+                print("  Final location: \(metadata.fileURL.path)")
+                print("  Filename: \(metadata.filename)")
+                print("  Duration: \(metadata.formattedDuration)")
+                print("  Size: \(metadata.formattedFileSize)")
+                print("  Resolution: \(metadata.displayResolution)")
+
+                // Clean up temp file
+                FileManagerService.shared.cleanupTempFile(tempVideoURL)
 
                 // Show mock preview for now (real preview in Day 23)
                 showMockPreview()
@@ -354,6 +347,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let totalFrames = resetRecordingState()
 
                 print("📊 AppDelegate: Recording summary: \(totalFrames) frames captured")
+                print("🎉 Day 22 Success: Video saved to ~/Movies/ with metadata!")
 
             } catch {
                 print("❌ AppDelegate: Failed to stop recording: \(error)")
@@ -439,7 +433,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             frameRate: SettingsManager.shared.defaultSettings.frameRate,
             fileSize: statusBarController?.simulatedFileSize ?? Int64(150_000_000),
             createdDate: Date(),
-            thumbnailColor: .blue
+            thumbnailColor: Color.blue
         )
 
         // Show preview dialog for this recording

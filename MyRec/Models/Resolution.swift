@@ -5,7 +5,6 @@ enum Resolution: String, Codable, CaseIterable {
     case fullHD = "1080P"
     case twoK = "2K"
     case fourK = "4K"
-    case custom
 
     var dimensions: (width: Int, height: Int) {
         switch self {
@@ -13,7 +12,6 @@ enum Resolution: String, Codable, CaseIterable {
         case .fullHD: return (1920, 1080)
         case .twoK: return (2560, 1440)
         case .fourK: return (3840, 2160)
-        case .custom: return (0, 0)
         }
     }
 
@@ -26,7 +24,6 @@ enum Resolution: String, Codable, CaseIterable {
         case .fullHD: return "1080P"
         case .twoK: return "2K"
         case .fourK: return "4K"
-        case .custom: return "Custom"
         }
     }
 }

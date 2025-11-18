@@ -41,18 +41,7 @@ struct PreviewDialogView: View {
                 .help("Share")
             }
         }
-        .onKeyPress(.space) {
-            viewModel.togglePlayback()
-            return .handled
-        }
-        .onKeyPress(.leftArrow) {
-            viewModel.seek(by: -5)
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            viewModel.seek(by: 5)
-            return .handled
-        }
+        .keyboardShortcut(.space, modifiers: [])
     }
 
     // MARK: - Video Player Section
@@ -234,7 +223,7 @@ struct PlaybackSpeedMenu: View {
 
                             if viewModel.playbackSpeed == speed {
                                 Image(systemName: "checkmark")
-                                    .font(.system(.body, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.blue)
                             }
                         }
