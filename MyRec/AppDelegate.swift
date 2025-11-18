@@ -146,7 +146,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create a mock recording for the just-completed session
         let mockRecording = MockRecording(
             id: UUID(),
-            filename: "REC-\(timestamp).mp4",
+            filename: "MyRecord-\(timestamp).mp4",
             duration: statusBarController?.elapsedTime ?? 30.0,
             resolution: SettingsManager.shared.defaultSettings.resolution,
             frameRate: SettingsManager.shared.defaultSettings.frameRate,

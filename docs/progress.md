@@ -1,12 +1,12 @@
 # MyRec Development Progress
 
-**Last Updated:** November 16, 2025
+**Last Updated:** November 18, 2025
 
 ## Project Status
 
-**Current Phase:** UI-First Implementation (Days 10-12)
-**Overall Progress:** Week 2, Day 12 completed
-**Next Milestone:** Recording History Window (Day 13)
+**Current Phase:** Backend Integration (Week 5)
+**Overall Progress:** Day 19 completed - Architecture design done
+**Next Milestone:** ScreenCaptureEngine Implementation (Day 20)
 
 ---
 
@@ -42,11 +42,11 @@ The project has pivoted to a UI-first approach. All UI components will be built 
 
 ---
 
-## Week 2: System Tray & Region Selection (In Progress)
+## Week 2-3: UI-First Implementation ✅
 
-**Status:** IN PROGRESS
-**Current Day:** Day 9 (completed)
-**Strategy Shift:** Moving to UI-first approach for remaining development
+**Status:** COMPLETED
+**Duration:** November 15-18, 2025
+**Strategy:** UI-First approach - build all UI components with mock data before backend integration
 
 ### Day 6: System Tray Implementation ✅
 
@@ -281,16 +281,77 @@ Paused:        [00:04:27] [▶] [⏹]
 - ✅ Tests: 89/89 passing (no regressions)
 - ✅ Security: All input validation implemented
 
-### Day 13: Recording History Window (Upcoming)
+### Day 13: Recording History Window ✅
 
-**Status:** PENDING
+**Status:** COMPLETED (Not Required)
+**Date:** November 18, 2025
 
-**Planned Features:**
-- [ ] RecordingHistoryWindow with list view (800×600 resizable)
-- [ ] Display mock recordings with metadata and thumbnails
-- [ ] Search and filter functionality
-- [ ] Action buttons (Play, Trim, Share, Delete)
-- [ ] Integration with Preview Dialog (to be built later)
+**Outcome:**
+Recording history functionality already implemented in HomePageView during Days 10-12. No separate window needed.
+
+**Features Already Available:**
+- ✅ Recording list view in HomePageView with mock data
+- ✅ Mock recordings displayed with metadata and thumbnails
+- ✅ Action buttons (Play, Trim, Share, Delete, Open Folder)
+- ✅ "NEW" badge for recent recordings
+- ✅ Empty state view
+- ✅ HomeRecordingRowView component with hover states
+
+**Implementation Details:**
+- Located in: `MyRec/Views/Home/HomePageView.swift`
+- Uses MockRecording model for test data
+- Integrated with HomePageViewModel for actions
+- Full action button support: Play, Trim, Delete, Share, Open Folder
+
+**Decision:** Consolidated design - single home window instead of separate history window provides better UX.
+
+### Days 14-18: Additional UI Components ✅
+
+**Status:** COMPLETED (Already Built)
+**Date:** November 18, 2025
+
+**Outcome:**
+All remaining UI components were already implemented during the UI-first approach. No additional work needed.
+
+**Components Already Built:**
+
+**Day 14-15: Preview Dialog ✅**
+- ✅ PreviewDialogView with video player area
+- ✅ Action buttons (Trim, Open Folder, Delete, Share)
+- ✅ Keyboard shortcuts (Space, Arrow keys)
+- ✅ PreviewDialogViewModel for state management
+- ✅ Full playback controls integration
+- Located in: `MyRec/Views/Preview/PreviewDialogView.swift`
+
+**Day 16-17: Trim Dialog ✅**
+- ✅ TrimDialogView with timeline scrubber
+- ✅ Frame preview section
+- ✅ Draggable trim handles (start/end)
+- ✅ Control bar with playback controls
+- ✅ Save/Save As buttons
+- ✅ TrimDialogViewModel for trim logic
+- ✅ Keyboard shortcuts for navigation
+- Located in: `MyRec/Views/Trim/TrimDialogView.swift`
+
+**Day 18: UI Polish ✅**
+- ✅ CountdownOverlay (3-2-1 animation)
+- ✅ Smooth transitions and animations
+- ✅ Visual feedback during recording
+- ✅ Complete keyboard shortcut integration
+- ✅ All UI components tested and working
+- Located in: `MyRec/Views/RegionSelection/CountdownOverlay.swift`
+
+**UI Components Summary (Complete):**
+1. ✅ HomePageView - Main window with recording list
+2. ✅ RegionSelectionView - Screen capture region selector
+3. ✅ ResizeHandleView - Drag handles for region selection
+4. ✅ CountdownOverlay - 3-2-1 countdown animation
+5. ✅ SettingsBarView - Recording settings bar
+6. ✅ SettingsDialogView - App settings dialog
+7. ✅ PreviewDialogView - Video preview/playback
+8. ✅ TrimDialogView - Video trimming interface
+
+**Decision:** UI-first implementation complete. Ready for backend integration in Week 5.
 
 ---
 
@@ -314,26 +375,94 @@ Paused:        [00:04:27] [▶] [⏹]
 
 ---
 
+## Week 5: Backend Integration (CURRENT) 🚀
+
+**Status:** IN PROGRESS
+**Duration:** November 18-22, 2025
+**Focus:** Replace mock data with real screen recording functionality
+
+### Day 19: Documentation & Architecture Planning ✅
+
+**Status:** COMPLETED
+**Date:** November 18, 2025
+
+**Completed Tasks:**
+- ✅ Updated progress documentation (marked Days 14-18 complete)
+- ✅ Designed RecordingManager interface
+- ✅ Designed ScreenCaptureEngine interface
+- ✅ Designed VideoEncoder interface
+- ✅ Designed FileManagerService interface
+- ✅ Planned notification flow for recording events
+- ✅ Created architecture diagrams for recording engine
+
+**Deliverables:**
+- ✅ Created `docs/week5-architecture.md` (comprehensive service interfaces)
+- ✅ Complete RecordingManager API with @MainActor and @Published properties
+- ✅ ScreenCaptureEngine interface using ScreenCaptureKit (macOS 13+)
+- ✅ VideoEncoder interface with AVAssetWriter and H.264 encoding
+- ✅ FileManagerService interface with file naming and metadata extraction
+- ✅ 6 new NotificationCenter events defined
+- ✅ Data flow diagrams for recording pipeline
+- ✅ Testing strategy documented
+
+**Files Created:**
+- `docs/week5-architecture.md` (complete service interface definitions)
+
+**Key Decisions:**
+- Use @MainActor for RecordingManager (UI safety)
+- Actor isolation for ScreenCaptureEngine and VideoEncoder (thread safety)
+- Callback pattern for frame delivery (performance)
+- NotificationCenter for backward compatibility with existing UI
+- Async/await for modern Swift concurrency
+- Filename format: `MyRecord-{YYYYMMDDHHMMSS}.mp4`
+
+### Day 20: ScreenCaptureKit Foundation
+- [ ] Research ScreenCaptureKit API
+- [ ] Implement ScreenCaptureEngine service
+- [ ] Test screen recording permission handling
+- [ ] Basic capture test (5 seconds)
+- [ ] Verify CVPixelBuffer format and frame delivery
+
+### Day 21: Video Encoding Pipeline
+- [ ] Implement VideoEncoder service (H.264/MP4)
+- [ ] AVAssetWriter integration
+- [ ] Bitrate calculation logic
+- [ ] End-to-end encoding test
+- [ ] Verify MP4 playback in QuickTime
+
+### Day 22: RecordingManager & File System
+- [ ] Implement RecordingManager (state coordinator)
+- [ ] Implement FileManagerService
+- [ ] File naming (MyRecord-{timestamp}.mp4)
+- [ ] Integration test (full recording flow)
+- [ ] Verify files save to ~/Movies/
+
+### Day 23: UI Integration & Testing
+- [ ] Replace mock recording logic in AppDelegate
+- [ ] Connect StatusBarController to real RecordingManager
+- [ ] Wire PreviewDialogView to AVPlayer
+- [ ] Load real recordings in HomePageView
+- [ ] End-to-end manual testing
+- [ ] Remove mock data infrastructure
+
+**Goal:** By end of Week 5, app should record real screen content and save MP4 files.
+
+---
+
 ## Upcoming Milestones
 
-### Week 3: UI-First Implementation Continuation (Nov 18-24)
-- Recording History Window with mock data
-- Preview Dialog with video player placeholder
-- Region Selection UX polish (countdown, animations)
-- Enhanced Settings Bar state integration
+### Week 6-7: Audio Integration & Advanced Features
+- System audio capture (CoreAudio)
+- Microphone input (AVAudioEngine)
+- Audio/video synchronization
+- Pause/Resume functionality
+- Audio mixing pipeline
 
-### Week 4: Recording Engine Foundation (Nov 25-Dec 1)
-- Audio capture (system + microphone)
-- AVAssetWriter integration
-- Recording state machine
-- File naming and save location
-- Actual recording implementation
-
-### Phase 2: Recording Controls & Settings (Weeks 5-8)
-- Advanced settings UI
-- Hotkey customization
+### Week 8+: Production Features
 - Camera preview integration
 - Audio level meters
+- Advanced settings UI
+- Performance optimization
 - Production-ready recording features
 
 ---

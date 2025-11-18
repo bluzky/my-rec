@@ -113,7 +113,7 @@ class MockRecordingGenerator {
         let createdDate = date.addingTimeInterval(TimeInterval(-randomSeconds))
 
         let timestamp = dateFormatter.string(from: createdDate)
-        let filename = "REC-\(timestamp).mp4"
+        let filename = "MyRecord-\(timestamp).mp4"
 
         return MockRecording(
             filename: filename,
@@ -156,7 +156,7 @@ class MockRecordingGenerator {
             let color = colors.randomElement() ?? .blue
 
             let timestamp = dateFormatter.string(from: createdDate)
-            let filename = "REC-\(timestamp).mp4"
+            let filename = "MyRecord-\(timestamp).mp4"
 
             recordings.append(MockRecording(
                 filename: filename,
@@ -210,7 +210,7 @@ extension MockRecording {
 
     /// Sample recording for SwiftUI previews
     static let sample = MockRecording(
-        filename: "REC-20251116103045.mp4",
+        filename: "MyRecord-20251116103045.mp4",
         duration: 332, // 5:32
         resolution: .fullHD,
         frameRate: .fps30,

@@ -157,7 +157,7 @@ final class MockRecordingTests: XCTestCase {
         let recording = MockRecordingGenerator.randomRecording()
 
         XCTAssertFalse(recording.filename.isEmpty)
-        XCTAssertTrue(recording.filename.hasPrefix("REC-"))
+        XCTAssertTrue(recording.filename.hasPrefix("MyRecord-"))
         XCTAssertTrue(recording.filename.hasSuffix(".mp4"))
         XCTAssertGreaterThan(recording.duration, 0)
         XCTAssertGreaterThan(recording.fileSize, 0)
@@ -242,7 +242,7 @@ final class MockRecordingTests: XCTestCase {
     func testSampleData() {
         // Test that sample data is accessible
         let sample = MockRecording.sample
-        XCTAssertEqual(sample.filename, "REC-20251116103045.mp4")
+        XCTAssertEqual(sample.filename, "MyRecord-20251116103045.mp4")
         XCTAssertEqual(sample.duration, 332)
         XCTAssertEqual(sample.resolution, .fullHD)
 
