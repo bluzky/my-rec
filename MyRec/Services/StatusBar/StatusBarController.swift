@@ -409,9 +409,10 @@ public class StatusBarController: NSObject, ObservableObject {
         isRecording = false
         isPaused = false
 
+        // Post recording state change to notify AppDelegate
         NotificationCenter.default.post(
-            name: .stopRecording,
-            object: nil
+            name: .recordingStateChanged,
+            object: RecordingState.idle
         )
     }
 

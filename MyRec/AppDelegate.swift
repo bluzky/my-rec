@@ -91,7 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
-        // Listen for stop recording notification to show preview
+        // Listen for stop recording notification (keyboard shortcut safety net)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleStopRecording),
@@ -146,6 +146,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         showDashboard()
     }
 
+    @objc private func handleStopRecording() {
+        print("⏹ Stop recording notification received - stopping capture")
+        stopCapture()
+    }
+
     @objc private func handleOpenPreview(_ notification: Notification) {
         print("🎬 Preview clicked - showing preview dialog")
         if let recording = notification.userInfo?["recording"] as? MockRecording {
@@ -164,30 +169,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func handleStopRecording() {
-        print("⏹ Recording stopped - creating mock recording and showing preview")
-
-        // Create filename with timestamp
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyyMMddHHmmss"
-        let timestamp = dateFormatter.string(from: Date())
-
-        // Create a mock recording for the just-completed session
-        let mockRecording = MockRecording(
-            id: UUID(),
-            filename: "MyRecord-\(timestamp).mp4",
-            duration: statusBarController?.elapsedTime ?? 30.0,
-            resolution: SettingsManager.shared.defaultSettings.resolution,
-            frameRate: SettingsManager.shared.defaultSettings.frameRate,
-            fileSize: statusBarController?.simulatedFileSize ?? Int64(150_000_000),
-            createdDate: Date(),
-            thumbnailColor: .blue
-        )
-
-        // Show preview dialog for this recording
-        showPreviewDialog(for: mockRecording)
-    }
-
+    
     private func showRegionSelection() {
         // Clean up existing window if any
         if let existingWindow = regionSelectionWindow {
@@ -330,22 +312,72 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopCapture() {
         Task { @MainActor in
             do {
-                try await captureEngine?.stopCapture()
-                print("✅ Recording stopped - Total frames: \(frameCount)")
+                print("🔄 AppDelegate: Stopping capture...")
+
+                // Stop capture + get output file
+                guard let videoURL = try await captureEngine?.stopCapture() else {
+                    print("❌ AppDelegate: No video URL returned from capture engine")
+                    // Still show preview and reset on failure
+                    showMockPreview()
+                    resetRecordingState()
+                    return
+                }
+
+                print("✅ AppDelegate: Recording stopped successfully")
+                print("📁 File saved: \(videoURL.path)")
+                print("📊 Total frames: \(frameCount)")
+
+                // Verify file exists and has content
+                if FileManager.default.fileExists(atPath: videoURL.path) {
+                    do {
+                        let fileSize = try FileManager.default.attributesOfItem(atPath: videoURL.path)[.size] as? Int64 ?? 0
+                        print("📏 File size: \(formatFileSize(fileSize))")
+
+                        if fileSize > 0 {
+                            // Open in QuickTime for manual verification
+                            NSWorkspace.shared.open(videoURL)
+                            print("✅ Opened video in QuickTime for verification")
+                        } else {
+                            print("⚠️ Warning: Video file is empty (0 bytes)")
+                        }
+                    } catch {
+                        print("⚠️ Warning: Could not get file size: \(error)")
+                    }
+                } else {
+                    print("❌ Warning: Video file not found at \(videoURL.path)")
+                }
+
+                // Show mock preview for now (real preview in Day 23)
+                showMockPreview()
 
                 // Reset state
-                let totalFrames = frameCount
-                frameCount = 0
-                captureEngine = nil
-                recordingStartTime = nil
+                let totalFrames = resetRecordingState()
 
-                print("📊 Recording summary: \(totalFrames) frames captured")
+                print("📊 AppDelegate: Recording summary: \(totalFrames) frames captured")
 
             } catch {
-                print("❌ Failed to stop recording: \(error)")
-                showError("Failed to stop recording: \(error.localizedDescription)")
+                print("❌ AppDelegate: Failed to stop recording: \(error)")
+                // Still reset state and show preview on error
+                let totalFrames = resetRecordingState()
+                showMockPreview()
+
+                // Only show error dialog for critical failures
+                let errorMessage = error.localizedDescription
+                if !errorMessage.contains("unknown error occurred") {
+                    showError("Failed to stop recording: \(errorMessage)")
+                }
             }
         }
+    }
+
+    @discardableResult
+    private func resetRecordingState() -> Int {
+        let totalFrames = frameCount
+        frameCount = 0
+        captureEngine = nil
+        recordingStartTime = nil
+        print("🔄 AppDelegate: Recording state reset - \(totalFrames) frames captured")
+        return totalFrames
     }
 
     private func handleFrameCaptured(frame: Int, time: CMTime) {
@@ -385,6 +417,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    private func formatFileSize(_ bytes: Int64) -> String {
+        let mb = Double(bytes) / 1_048_576.0
+        return String(format: "%.2f MB", mb)
+    }
+
+    private func showMockPreview() {
+        // Create filename with timestamp
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyyMMddHHmmss"
+        let timestamp = dateFormatter.string(from: Date())
+
+        // Create a mock recording for the just-completed session
+        let mockRecording = MockRecording(
+            id: UUID(),
+            filename: "MyRecord-\(timestamp).mp4",
+            duration: statusBarController?.elapsedTime ?? 30.0,
+            resolution: SettingsManager.shared.defaultSettings.resolution,
+            frameRate: SettingsManager.shared.defaultSettings.frameRate,
+            fileSize: statusBarController?.simulatedFileSize ?? Int64(150_000_000),
+            createdDate: Date(),
+            thumbnailColor: .blue
+        )
+
+        // Show preview dialog for this recording
+        showPreviewDialog(for: mockRecording)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
