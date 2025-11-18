@@ -5,8 +5,8 @@
 ## Project Status
 
 **Current Phase:** Backend Integration (Week 5)
-**Overall Progress:** UI-First Implementation Complete (Days 1-18)
-**Next Milestone:** ScreenCaptureKit Integration (Week 5, Days 19-23)
+**Overall Progress:** Day 19 completed - Architecture design done
+**Next Milestone:** ScreenCaptureEngine Implementation (Day 20)
 
 ---
 
@@ -377,17 +377,44 @@ All remaining UI components were already implemented during the UI-first approac
 
 ## Week 5: Backend Integration (CURRENT) 🚀
 
-**Status:** STARTING
+**Status:** IN PROGRESS
 **Duration:** November 18-22, 2025
 **Focus:** Replace mock data with real screen recording functionality
 
-### Day 19: Documentation & Architecture Planning
-- [ ] Update progress documentation (this file)
-- [ ] Design RecordingManager interface
-- [ ] Design ScreenCaptureEngine interface
-- [ ] Design VideoEncoder interface
-- [ ] Plan notification flow for recording events
-- [ ] Architecture diagram for recording engine
+### Day 19: Documentation & Architecture Planning ✅
+
+**Status:** COMPLETED
+**Date:** November 18, 2025
+
+**Completed Tasks:**
+- ✅ Updated progress documentation (marked Days 14-18 complete)
+- ✅ Designed RecordingManager interface
+- ✅ Designed ScreenCaptureEngine interface
+- ✅ Designed VideoEncoder interface
+- ✅ Designed FileManagerService interface
+- ✅ Planned notification flow for recording events
+- ✅ Created architecture diagrams for recording engine
+
+**Deliverables:**
+- ✅ Created `docs/week5-architecture.md` (comprehensive service interfaces)
+- ✅ Complete RecordingManager API with @MainActor and @Published properties
+- ✅ ScreenCaptureEngine interface using ScreenCaptureKit (macOS 13+)
+- ✅ VideoEncoder interface with AVAssetWriter and H.264 encoding
+- ✅ FileManagerService interface with file naming and metadata extraction
+- ✅ 6 new NotificationCenter events defined
+- ✅ Data flow diagrams for recording pipeline
+- ✅ Testing strategy documented
+
+**Files Created:**
+- `docs/week5-architecture.md` (complete service interface definitions)
+
+**Key Decisions:**
+- Use @MainActor for RecordingManager (UI safety)
+- Actor isolation for ScreenCaptureEngine and VideoEncoder (thread safety)
+- Callback pattern for frame delivery (performance)
+- NotificationCenter for backward compatibility with existing UI
+- Async/await for modern Swift concurrency
+- Filename format: `MyRecord-{YYYYMMDDHHMMSS}.mp4`
 
 ### Day 20: ScreenCaptureKit Foundation
 - [ ] Research ScreenCaptureKit API
@@ -406,7 +433,7 @@ All remaining UI components were already implemented during the UI-first approac
 ### Day 22: RecordingManager & File System
 - [ ] Implement RecordingManager (state coordinator)
 - [ ] Implement FileManagerService
-- [ ] File naming (REC-{timestamp}.mp4)
+- [ ] File naming (MyRecord-{timestamp}.mp4)
 - [ ] Integration test (full recording flow)
 - [ ] Verify files save to ~/Movies/
 

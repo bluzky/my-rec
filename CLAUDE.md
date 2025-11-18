@@ -172,7 +172,7 @@ xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=ma
 2. User clicks "Trim Video" button
 3. Trim dialog shows: video preview, timeline, draggable handles
 4. User drags start/end handles to select range
-5. User clicks Save → trimmed video exports as new file: `REC-{timestamp}-trimmed.mp4`
+5. User clicks Save → trimmed video exports as new file: `MyRecord-{timestamp}-trimmed.mp4`
 
 ## Technical Specifications
 
@@ -194,9 +194,9 @@ xcodebuild test -project MyRec.xcodeproj -scheme MyRec -destination 'platform=ma
 - **Channels:** Stereo
 
 ### File Management
-- **Naming:** `REC-{YYYYMMDDHHMMSS}.mp4`
+- **Naming:** `MyRecord-{YYYYMMDDHHMMSS}.mp4`
 - **Default Location:** `~/Movies/` (configurable)
-- **Trimmed Files:** `REC-{YYYYMMDDHHMMSS}-trimmed.mp4`
+- **Trimmed Files:** `MyRecord-{YYYYMMDDHHMMSS}-trimmed.mp4`
 - **Permissions:** User read/write, auto-create directory if missing
 
 ### Keyboard Shortcuts (Customizable)
