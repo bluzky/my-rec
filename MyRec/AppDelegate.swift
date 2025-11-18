@@ -246,8 +246,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showRegionSelection() {
-        // Hide existing window if any
-        regionSelectionWindow?.close()
+        // Clean up existing window if any
+        if let existingWindow = regionSelectionWindow {
+            existingWindow.cleanup() // Remove event monitors first
+            existingWindow.orderOut(nil) // Hide the window
+            regionSelectionWindow = nil
+        }
 
         // Create and show new region selection window
         regionSelectionWindow = RegionSelectionWindow()
