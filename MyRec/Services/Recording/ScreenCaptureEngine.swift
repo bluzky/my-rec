@@ -11,6 +11,10 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     private var isCapturing = false
     private var startTime: CMTime?
 
+    // ADD: VideoEncoder integration
+    private var videoEncoder: VideoEncoder?
+    private var tempURL: URL?
+
     // MARK: - Callbacks
     var onFrameCaptured: ((Int, CMTime) -> Void)?
     var onError: ((Error) -> Void)?
@@ -29,6 +33,32 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
         self.frameCount = 0
         self.startTime = nil
 
+        // ADD: Create temp file URL
+        tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("recording-\(UUID().uuidString).mp4")
+
+        // ADD: Create and start encoder
+        guard let tempURL = tempURL else {
+            throw CaptureError.configurationFailed
+        }
+
+        videoEncoder = VideoEncoder(
+            outputURL: tempURL,
+            resolution: resolution,
+            frameRate: frameRate
+        )
+
+        videoEncoder?.onFrameEncoded = { frame in
+            print("💾 Frame \(frame) encoded to MP4")
+        }
+
+        videoEncoder?.onError = { error in
+            print("❌ Encoding error: \(error)")
+        }
+
+        try videoEncoder?.startEncoding()
+        print("✅ Encoder started - Output: \(tempURL.lastPathComponent)")
+
         // Setup stream (permission already checked in AppDelegate)
         try await setupStream(resolution: resolution, frameRate: frameRate)
 
@@ -37,14 +67,54 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     }
 
     /// Stop capturing the screen
-    func stopCapture() async throws {
-        guard isCapturing else { return }
+    func stopCapture() async throws -> URL {
+        guard isCapturing else {
+            print("⚠️ ScreenCaptureEngine: Not currently capturing")
+            throw CaptureError.notCapturing
+        }
 
-        try await stream?.stopCapture()
-        stream = nil
+        print("🔄 ScreenCaptureEngine: Stopping capture...")
         isCapturing = false
 
-        print("✅ ScreenCaptureEngine: Capture stopped - \(frameCount) frames")
+        // Stop stream first with error handling
+        do {
+            try await stream?.stopCapture()
+            stream = nil
+            print("✅ ScreenCaptureEngine: Stream stopped")
+        } catch {
+            print("❌ ScreenCaptureEngine: Error stopping stream: \(error)")
+            // Continue with encoder cleanup even if stream fails
+        }
+
+        // Finish encoding
+        guard let encoder = videoEncoder else {
+            print("❌ ScreenCaptureEngine: No encoder initialized")
+            throw CaptureError.encoderNotInitialized
+        }
+
+        do {
+            let outputURL = try await encoder.finishEncoding()
+            print("✅ ScreenCaptureEngine: Encoding finished - File: \(outputURL.path)")
+
+            // Reset
+            videoEncoder = nil
+            let result = outputURL
+            tempURL = nil
+            let finalFrameCount = frameCount
+            frameCount = 0
+            startTime = nil
+
+            print("✅ ScreenCaptureEngine: Capture stopped - \(finalFrameCount) frames")
+            return result
+        } catch {
+            print("❌ ScreenCaptureEngine: Error during encoding: \(error)")
+            // Cleanup on error
+            videoEncoder = nil
+            tempURL = nil
+            frameCount = 0
+            startTime = nil
+            throw error
+        }
     }
 
     // MARK: - SCStreamOutput
@@ -53,6 +123,14 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
         guard type == .screen else { return }
 
         frameCount += 1
+
+        // Send frame to encoder
+        videoEncoder?.appendFrame(sampleBuffer)
+
+        // Log every 30 frames
+        if frameCount % 30 == 0 {
+            print("📹 Frame \(frameCount) → Encoder")
+        }
 
         // Get presentation time
         let presentationTime = sampleBuffer.presentationTimeStamp
@@ -118,6 +196,8 @@ enum CaptureError: LocalizedError {
     case permissionDenied
     case captureUnavailable
     case configurationFailed
+    case notCapturing
+    case encoderNotInitialized
 
     var errorDescription: String? {
         switch self {
@@ -127,6 +207,10 @@ enum CaptureError: LocalizedError {
             return "Screen capture is unavailable. Please ensure macOS 13 or later."
         case .configurationFailed:
             return "Failed to configure screen capture."
+        case .notCapturing:
+            return "Not currently capturing."
+        case .encoderNotInitialized:
+            return "Video encoder was not initialized."
         }
     }
 }
