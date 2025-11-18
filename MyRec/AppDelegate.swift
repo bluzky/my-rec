@@ -7,6 +7,8 @@
 
 import Cocoa
 import SwiftUI
+import CoreMedia
+import ScreenCaptureKit
 #if canImport(MyRecCore)
 import MyRecCore
 #endif
@@ -18,6 +20,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var homePageWindowController: HomePageWindowController?
     var previewDialogWindowController: PreviewDialogWindowController?
     var trimDialogWindowController: TrimDialogWindowController?
+
+    // MARK: - Recording Engine
+    private var captureEngine: ScreenCaptureEngine?
+    private var frameCount: Int = 0
+    private var recordingStartTime: Date?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Show dock icon for window-based app
@@ -92,19 +99,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        // Listen for recording state changes to control screen capture
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRecordingStateChanged(_:)),
+            name: .recordingStateChanged,
+            object: nil
+        )
+
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
         print("✅ Registered observer for showDashboard notification")
         print("✅ Registered observer for openPreview notification")
         print("✅ Registered observer for openTrim notification")
         print("✅ Registered observer for stopRecording notification")
+        print("✅ Registered observer for recordingStateChanged notification")
     }
 
     @objc private func handleStartRecording() {
-        print("📱 Record Screen clicked - hiding home page and showing region selection overlay")
-        // Hide home page window before showing region selection
-        homePageWindowController?.hide()
-        showRegionSelection()
+        print("📱 Record Screen clicked - checking permissions first")
+
+        // Check screen recording permission before proceeding
+        Task { @MainActor in
+            let hasPermission = await checkScreenRecordingPermission()
+
+            if hasPermission {
+                // Permission granted, proceed with region selection
+                print("✅ Screen recording permission granted")
+                homePageWindowController?.hide()
+                showRegionSelection()
+            } else {
+                // Permission denied - system dialog already shown
+                // Just log and abort the action
+                print("❌ Screen recording permission denied - action aborted")
+            }
+        }
     }
 
     @objc private func handleOpenSettings() {
@@ -199,6 +228,163 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create new trim dialog window controller
         trimDialogWindowController = TrimDialogWindowController(recording: recording)
         print("✅ Trim dialog shown for: \(recording.filename)")
+    }
+
+    // MARK: - Permission Handling
+
+    private func checkScreenRecordingPermission() async -> Bool {
+        do {
+            // Use ScreenCaptureKit to check if we have permission
+            // This will trigger the system permission dialog if not already granted
+            let content = try await SCShareableContent.excludingDesktopWindows(
+                false,
+                onScreenWindowsOnly: true
+            )
+
+            let hasPermission = !content.displays.isEmpty
+
+            if hasPermission {
+                print("✅ Screen recording permission check passed - \(content.displays.count) display(s) available")
+            } else {
+                print("⚠️ No displays available - permission may be denied")
+            }
+
+            return hasPermission
+
+        } catch {
+            // Error during permission check (likely denied or restricted)
+            print("❌ Screen recording permission check error: \(error)")
+            return false
+        }
+    }
+
+    // MARK: - Screen Capture Integration
+
+    @objc private func handleRecordingStateChanged(_ notification: Notification) {
+        guard let state = notification.object as? RecordingState else {
+            print("⚠️ Invalid recording state in notification")
+            return
+        }
+
+        switch state {
+        case .recording(let startTime):
+            recordingStartTime = startTime
+            startCapture()
+        case .idle:
+            stopCapture()
+        case .paused:
+            // Pause not implemented in Day 20
+            break
+        }
+    }
+
+    private func startCapture() {
+        Task { @MainActor in
+            do {
+                // Get region from region selection window
+                guard let region = regionSelectionWindow?.selectedRegion else {
+                    print("⚠️ No region selected, using full screen")
+                    // Use full screen as default
+                    let screen = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
+                    try await startCaptureEngine(region: screen)
+                    return
+                }
+
+                try await startCaptureEngine(region: region)
+
+            } catch {
+                print("❌ Failed to start recording: \(error)")
+                showError("Failed to start recording: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func startCaptureEngine(region: CGRect) async throws {
+        let resolution = SettingsManager.shared.defaultSettings.resolution
+        let frameRate = SettingsManager.shared.defaultSettings.frameRate
+
+        print("📹 Starting capture...")
+        print("  Region: \(region)")
+        print("  Resolution: \(resolution.displayName)")
+        print("  Frame Rate: \(frameRate.displayName)")
+
+        // Create and configure capture engine
+        captureEngine = ScreenCaptureEngine()
+        captureEngine?.onFrameCaptured = { [weak self] frame, time in
+            self?.handleFrameCaptured(frame: frame, time: time)
+        }
+        captureEngine?.onError = { [weak self] error in
+            self?.handleCaptureError(error)
+        }
+
+        // Start capture
+        try await captureEngine?.startCapture(
+            region: region,
+            resolution: resolution,
+            frameRate: frameRate
+        )
+
+        print("✅ Recording started - Region: \(region)")
+    }
+
+    private func stopCapture() {
+        Task { @MainActor in
+            do {
+                try await captureEngine?.stopCapture()
+                print("✅ Recording stopped - Total frames: \(frameCount)")
+
+                // Reset state
+                let totalFrames = frameCount
+                frameCount = 0
+                captureEngine = nil
+                recordingStartTime = nil
+
+                print("📊 Recording summary: \(totalFrames) frames captured")
+
+            } catch {
+                print("❌ Failed to stop recording: \(error)")
+                showError("Failed to stop recording: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func handleFrameCaptured(frame: Int, time: CMTime) {
+        frameCount = frame
+
+        // Log every 30 frames (once per second at 30fps)
+        if frameCount % 30 == 0 {
+            print("📹 Frame \(frameCount) captured at \(String(format: "%.1f", time.seconds))s")
+        }
+
+        // Update status bar with frame count
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .recordingFrameCaptured,
+                object: nil,
+                userInfo: ["frameCount": frame, "time": time.seconds]
+            )
+        }
+    }
+
+    private func handleCaptureError(_ error: Error) {
+        print("❌ Capture error: \(error)")
+        Task { @MainActor in
+            showError("Recording error: \(error.localizedDescription)")
+            // Stop recording on error
+            NotificationCenter.default.post(
+                name: .recordingStateChanged,
+                object: RecordingState.idle
+            )
+        }
+    }
+
+    private func showError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Recording Error"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
