@@ -15,7 +15,12 @@ class HomePageViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var recentRecordings: [MockRecording] = []
+    @Published var recentRecordings: [VideoMetadata] = []
+    @Published var isLoading = false
+
+    // MARK: - Private Properties
+
+    private let settingsManager = SettingsManager.shared
 
     // MARK: - Initialization
 
@@ -25,12 +30,34 @@ class HomePageViewModel: ObservableObject {
 
     // MARK: - Data Management
 
-    /// Load recent recordings (limit to 5 for home page)
+    /// Load recent recordings from disk (limit to 5 for home page)
     private func loadRecentRecordings() {
-        // Generate mock recordings for UI development
-        let allRecordings = MockRecordingGenerator.generate(count: 15)
-        recentRecordings = Array(allRecordings.prefix(5))
-        print("🏠 Loaded \(recentRecordings.count) recent recordings for home page")
+        isLoading = true
+        print("📂 Loading recordings from: \(settingsManager.savePath.path)")
+
+        Task {
+            do {
+                // Use FileManagerService to load all recordings
+                let fileManagerService = FileManagerService.shared
+                let allRecordings = try await fileManagerService.getSavedRecordings()
+
+                // Take only the 5 most recent
+                let recentRecordings = Array(allRecordings.prefix(5))
+
+                await MainActor.run {
+                    self.recentRecordings = recentRecordings
+                    isLoading = false
+                    print("✅ Loaded \(self.recentRecordings.count) recent recordings")
+                }
+
+            } catch {
+                print("❌ Failed to load recordings: \(error)")
+                await MainActor.run {
+                    recentRecordings = []
+                    isLoading = false
+                }
+            }
+        }
     }
 
     /// Refresh recordings list
@@ -53,7 +80,7 @@ class HomePageViewModel: ObservableObject {
     }
 
     /// Play a recording
-    func playRecording(_ recording: MockRecording) {
+    func playRecording(_ recording: VideoMetadata) {
         print("▶️ Playing recording: \(recording.filename)")
         NotificationCenter.default.post(
             name: .openPreview,
@@ -63,23 +90,24 @@ class HomePageViewModel: ObservableObject {
     }
 
     /// Trim a recording
-    func trimRecording(_ recording: MockRecording) {
+    func trimRecording(_ recording: VideoMetadata) {
         print("✂️ Trimming recording: \(recording.filename)")
-        NotificationCenter.default.post(
-            name: .openTrim,
-            object: nil,
-            userInfo: ["recording": recording]
-        )
+        // TODO: Implement trim dialog with VideoMetadata
+        print("⚠️ Trim dialog not yet updated for VideoMetadata")
     }
 
     /// Share a recording
-    func shareRecording(_ recording: MockRecording) {
+    func shareRecording(_ recording: VideoMetadata) {
         print("📤 Sharing recording: \(recording.filename)")
-        // TODO: Show macOS share sheet
+        // Open share sheet for the file
+        let sharingService = NSSharingServicePicker(items: [recording.fileURL])
+        // Note: In a real app, you'd need a view to anchor this to
+        // For now, just log
+        print("📤 Would show share sheet for: \(recording.fileURL.path)")
     }
 
     /// Delete a recording
-    func deleteRecording(_ recording: MockRecording) {
+    func deleteRecording(_ recording: VideoMetadata) {
         print("🗑 Deleting recording: \(recording.filename)")
 
         // Show confirmation dialog
@@ -92,9 +120,23 @@ class HomePageViewModel: ObservableObject {
 
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
-            // Remove from list
-            recentRecordings.removeAll { $0.id == recording.id }
-            print("✅ Recording deleted: \(recording.filename)")
+            do {
+                // Delete file from disk
+                try FileManager.default.removeItem(at: recording.fileURL)
+                print("✅ File deleted from disk: \(recording.fileURL.path)")
+
+                // Remove from list
+                recentRecordings.removeAll { $0.id == recording.id }
+                print("✅ Recording removed from list")
+            } catch {
+                print("❌ Failed to delete file: \(error)")
+                // Show error alert
+                let errorAlert = NSAlert()
+                errorAlert.messageText = "Failed to Delete"
+                errorAlert.informativeText = "Could not delete the recording: \(error.localizedDescription)"
+                errorAlert.alertStyle = .critical
+                errorAlert.runModal()
+            }
         }
     }
 }

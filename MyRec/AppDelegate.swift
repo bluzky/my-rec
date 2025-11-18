@@ -153,8 +153,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleOpenPreview(_ notification: Notification) {
         print("🎬 Preview clicked - showing preview dialog")
-        if let recording = notification.userInfo?["recording"] as? MockRecording {
-            showPreviewDialog(for: recording)
+        if let metadata = notification.userInfo?["recording"] as? VideoMetadata {
+            openPreviewDialog(with: metadata)
         } else {
             print("⚠️ No recording data found in notification")
         }
@@ -199,11 +199,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("✅ Dashboard shown")
     }
 
-    private func showPreviewDialog(for recording: MockRecording) {
-        // Create new preview dialog window controller
-        previewDialogWindowController = PreviewDialogWindowController(recording: recording)
+    private func openPreviewDialog(with metadata: VideoMetadata) {
+        print("🎬 Opening preview dialog for: \(metadata.filename)")
+        // Create new preview dialog window controller with real video
+        previewDialogWindowController = PreviewDialogWindowController(recording: metadata)
         previewDialogWindowController?.show()
-        print("✅ Preview dialog shown for: \(recording.filename)")
+        print("✅ Preview dialog shown - Real video will play")
     }
 
     private func showTrimDialog(for recording: MockRecording) {
@@ -317,8 +318,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Stop capture + get output file
                 guard let tempVideoURL = try await captureEngine?.stopCapture() else {
                     print("❌ AppDelegate: No video URL returned from capture engine")
-                    // Still show preview and reset on failure
-                    showMockPreview()
                     resetRecordingState()
                     return
                 }
@@ -340,20 +339,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Clean up temp file
                 FileManagerService.shared.cleanupTempFile(tempVideoURL)
 
-                // Show mock preview for now (real preview in Day 23)
-                showMockPreview()
+                // Show REAL preview with video (Day 23)
+                openPreviewDialog(with: metadata)
 
                 // Reset state
                 let totalFrames = resetRecordingState()
 
                 print("📊 AppDelegate: Recording summary: \(totalFrames) frames captured")
-                print("🎉 Day 22 Success: Video saved to ~/Movies/ with metadata!")
+                print("🎉 Day 23 Success: Real video preview working!")
 
             } catch {
                 print("❌ AppDelegate: Failed to stop recording: \(error)")
-                // Still reset state and show preview on error
-                let totalFrames = resetRecordingState()
-                showMockPreview()
+                // Reset state on error
+                _ = resetRecordingState()
 
                 // Only show error dialog for critical failures
                 let errorMessage = error.localizedDescription
@@ -418,27 +416,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return String(format: "%.2f MB", mb)
     }
 
-    private func showMockPreview() {
-        // Create filename with timestamp
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyyMMddHHmmss"
-        let timestamp = dateFormatter.string(from: Date())
-
-        // Create a mock recording for the just-completed session
-        let mockRecording = MockRecording(
-            id: UUID(),
-            filename: "MyRecord-\(timestamp).mp4",
-            duration: statusBarController?.elapsedTime ?? 30.0,
-            resolution: SettingsManager.shared.defaultSettings.resolution,
-            frameRate: SettingsManager.shared.defaultSettings.frameRate,
-            fileSize: statusBarController?.simulatedFileSize ?? Int64(150_000_000),
-            createdDate: Date(),
-            thumbnailColor: Color.blue
-        )
-
-        // Show preview dialog for this recording
-        showPreviewDialog(for: mockRecording)
-    }
 
     func applicationWillTerminate(_ notification: Notification) {
         // Clean up notification observers

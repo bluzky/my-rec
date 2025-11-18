@@ -117,7 +117,7 @@ struct HomePageView: View {
 // MARK: - Home Recording Row View
 
 struct HomeRecordingRowView: View {
-    let recording: MockRecording
+    let recording: VideoMetadata
     let onPlay: () -> Void
     let onTrim: () -> Void
     let onDelete: () -> Void
@@ -157,14 +157,16 @@ struct HomeRecordingRowView: View {
                     }
                 }
 
-                Text(recording.metadataString)
+                Text("\(recording.formattedDuration) • \(recording.formattedFileSize) • \(recording.displayResolution)")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
                 // Action buttons (always visible)
                 HStack(spacing: 12) {
                     ActionIconButton(icon: "scissors", action: onTrim)
-                    ActionIconButton(icon: "folder", action: {})
+                    ActionIconButton(icon: "folder", action: {
+                        NSWorkspace.shared.activateFileViewerSelecting([recording.fileURL])
+                    })
                     ActionIconButton(icon: "trash", action: onDelete, hoverColor: .red)
                     ActionIconButton(icon: "square.and.arrow.up", action: onShare)
                 }
@@ -176,7 +178,7 @@ struct HomeRecordingRowView: View {
         .padding(.vertical, 16)
     }
 
-    private func isNewRecording(_ recording: MockRecording) -> Bool {
+    private func isNewRecording(_ recording: VideoMetadata) -> Bool {
         // Consider recordings from the last hour as "new"
         let hourAgo = Date().addingTimeInterval(-3600)
         return recording.createdDate > hourAgo

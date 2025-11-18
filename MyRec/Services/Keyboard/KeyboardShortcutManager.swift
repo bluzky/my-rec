@@ -105,7 +105,7 @@ class KeyboardShortcutManager {
 
         for shortcut in shortcuts {
             var hotKeyRef: EventHotKeyRef?
-            var hotKeyID = EventHotKeyID(signature: OSType(0x4D524543), id: shortcut.id) // 'MREC'
+            let hotKeyID = EventHotKeyID(signature: OSType(0x4D524543), id: shortcut.id) // 'MREC'
 
             let modifiers = UInt32(cmdKey | optionKey)
 
