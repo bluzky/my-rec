@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import AVKit
 
 struct PreviewDialogView: View {
     @StateObject var viewModel: PreviewDialogViewModel
+    @State private var player: AVPlayer?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,18 +43,7 @@ struct PreviewDialogView: View {
                 .help("Share")
             }
         }
-        .onKeyPress(.space) {
-            viewModel.togglePlayback()
-            return .handled
-        }
-        .onKeyPress(.leftArrow) {
-            viewModel.seek(by: -5)
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            viewModel.seek(by: 5)
-            return .handled
-        }
+        .applyKeyboardShortcuts(viewModel: viewModel)
     }
 
     // MARK: - Video Player Section
@@ -74,27 +65,42 @@ struct PreviewDialogView: View {
     // MARK: - Video Placeholder
 
     private var videoPlaceholder: some View {
-        ZStack {
-            // Dark gray 900 background
-            Color(red: 0.067, green: 0.094, blue: 0.153)
-
-            VStack(spacing: 16) {
-                // Play/pause icon
-                Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundColor(.white)
-                    .shadow(radius: 8)
-                    .onTapGesture {
-                        viewModel.togglePlayback()
+        Group {
+            if let fileURL = viewModel.fileURL {
+                // Real recording - use AVPlayer
+                VideoPlayer(player: player)
+                    .onAppear {
+                        player = AVPlayer(url: fileURL)
                     }
+                    .onDisappear {
+                        player?.pause()
+                        player = nil
+                    }
+            } else {
+                // Mock recording - show placeholder
+                ZStack {
+                    // Dark gray 900 background
+                    Color(red: 0.067, green: 0.094, blue: 0.153)
 
-                Text("Video Preview Placeholder")
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.8))
+                    VStack(spacing: 16) {
+                        // Play/pause icon
+                        Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 64))
+                            .foregroundColor(.white)
+                            .shadow(radius: 8)
+                            .onTapGesture {
+                                viewModel.togglePlayback()
+                            }
 
-                Text(viewModel.recording.filename)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+                        Text("Video Preview Placeholder")
+                            .font(.title3)
+                            .foregroundColor(.white.opacity(0.8))
+
+                        Text(viewModel.filename)
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -110,7 +116,7 @@ struct PreviewDialogView: View {
                 Slider(
                     value: Binding(
                         get: { viewModel.progress },
-                        set: { viewModel.seek(to: $0 * viewModel.recording.duration) }
+                        set: { viewModel.seek(to: $0 * viewModel.duration) }
                     ),
                     in: 0...1
                 )
@@ -118,7 +124,7 @@ struct PreviewDialogView: View {
                 .tint(.blue)
 
                 // Time display: current / total
-                Text("\(viewModel.currentTimeString) / \(viewModel.recording.durationString)")
+                Text("\(viewModel.currentTimeString) / \(formatDuration(viewModel.duration))")
                     .font(.system(.body, design: .monospaced))
                     .foregroundColor(.white.opacity(0.9))
                     .frame(minWidth: 120, alignment: .trailing)
@@ -233,9 +239,15 @@ struct PlaybackSpeedMenu: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                             if viewModel.playbackSpeed == speed {
-                                Image(systemName: "checkmark")
-                                    .font(.system(.body, weight: .semibold))
-                                    .foregroundColor(.blue)
+                                if #available(macOS 13.0, *) {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(.body, weight: .semibold))
+                                        .foregroundColor(.blue)
+                                } else {
+                                    Image(systemName: "checkmark")
+                                        .font(.body)
+                                        .foregroundColor(.blue)
+                                }
                             }
                         }
                         .padding(.horizontal, 12)
@@ -263,6 +275,45 @@ struct PlaybackSpeedMenu: View {
             return "\(Int(speed))x"
         } else {
             return "\(speed)x"
+        }
+    }
+}
+
+// MARK: - Helper Functions
+
+private func formatDuration(_ duration: TimeInterval) -> String {
+    let hours = Int(duration) / 3600
+    let minutes = Int(duration) / 60 % 60
+    let seconds = Int(duration) % 60
+
+    if hours > 0 {
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+// MARK: - View Extension for Keyboard Shortcuts
+
+extension View {
+    @ViewBuilder
+    func applyKeyboardShortcuts(viewModel: PreviewDialogViewModel) -> some View {
+        if #available(macOS 14.0, *) {
+            self
+                .onKeyPress(.space) {
+                    viewModel.togglePlayback()
+                    return .handled
+                }
+                .onKeyPress(.leftArrow) {
+                    viewModel.seek(by: -5)
+                    return .handled
+                }
+                .onKeyPress(.rightArrow) {
+                    viewModel.seek(by: 5)
+                    return .handled
+                }
+        } else {
+            self
         }
     }
 }

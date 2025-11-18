@@ -8,7 +8,16 @@
 import SwiftUI
 
 struct HomePageView: View {
-    @StateObject private var viewModel = HomePageViewModel()
+    @StateObject var viewModel: HomePageViewModel
+
+    init(viewModel: HomePageViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
+
+    init() {
+        let viewModel = HomePageViewModel()
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some View {
         VStack(spacing: 0) {

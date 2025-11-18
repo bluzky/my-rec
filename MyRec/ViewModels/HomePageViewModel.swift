@@ -16,6 +16,11 @@ class HomePageViewModel: ObservableObject {
     // MARK: - Published Properties
 
     @Published var recentRecordings: [MockRecording] = []
+    @Published var realRecordings: [VideoMetadata] = []
+
+    // MARK: - Dependencies
+
+    private let fileManagerService = FileManagerService()
 
     // MARK: - Initialization
 
@@ -27,10 +32,42 @@ class HomePageViewModel: ObservableObject {
 
     /// Load recent recordings (limit to 5 for home page)
     private func loadRecentRecordings() {
-        // Generate mock recordings for UI development
-        let allRecordings = MockRecordingGenerator.generate(count: 15)
-        recentRecordings = Array(allRecordings.prefix(5))
-        print("🏠 Loaded \(recentRecordings.count) recent recordings for home page")
+        // Try to load real recordings first
+        Task {
+            await loadRealRecordings()
+
+            // If no real recordings, fall back to mock data for UI development
+            if realRecordings.isEmpty {
+                let allRecordings = MockRecordingGenerator.generate(count: 15)
+                recentRecordings = Array(allRecordings.prefix(5))
+                print("🏠 Loaded \(recentRecordings.count) mock recordings for home page")
+            } else {
+                print("🏠 Loaded \(realRecordings.count) real recordings for home page")
+            }
+        }
+    }
+
+    /// Load real recordings from disk
+    private func loadRealRecordings() async {
+        do {
+            let recordingURLs = try fileManagerService.listRecordings()
+
+            // Load metadata for each recording (limit to 5 most recent)
+            var metadataList: [VideoMetadata] = []
+            for url in recordingURLs.prefix(5) {
+                do {
+                    let metadata = try await fileManagerService.getVideoMetadata(for: url)
+                    metadataList.append(metadata)
+                } catch {
+                    print("⚠️ Failed to load metadata for \(url.lastPathComponent): \(error)")
+                }
+            }
+
+            realRecordings = metadataList
+        } catch {
+            print("⚠️ Failed to list recordings: \(error)")
+            realRecordings = []
+        }
     }
 
     /// Refresh recordings list

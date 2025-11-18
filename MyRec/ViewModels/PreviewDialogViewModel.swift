@@ -14,7 +14,8 @@ class PreviewDialogViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var recording: MockRecording
+    @Published var recording: MockRecording?
+    @Published var metadata: VideoMetadata?
     @Published var isPlaying: Bool = false
     @Published var currentTime: TimeInterval = 0
     @Published var volume: Double = 1.0
@@ -31,10 +32,42 @@ class PreviewDialogViewModel: ObservableObject {
 
     init(recording: MockRecording) {
         self.recording = recording
+        self.metadata = nil
         print("🎬 Preview dialog initialized for: \(recording.filename)")
     }
 
+    init(metadata: VideoMetadata) {
+        self.recording = nil
+        self.metadata = metadata
+        print("🎬 Preview dialog initialized for: \(metadata.filename)")
+    }
+
     // MARK: - Computed Properties
+
+    /// Duration from either recording or metadata
+    var duration: TimeInterval {
+        if let recording = recording {
+            return recording.duration
+        } else if let metadata = metadata {
+            return metadata.duration
+        }
+        return 0
+    }
+
+    /// Filename from either recording or metadata
+    var filename: String {
+        if let recording = recording {
+            return recording.filename
+        } else if let metadata = metadata {
+            return metadata.filename
+        }
+        return "Unknown"
+    }
+
+    /// File URL for real recordings (returns nil for mock recordings)
+    var fileURL: URL? {
+        return metadata?.fileURL
+    }
 
     /// Current time formatted as HH:MM:SS or MM:SS
     var currentTimeString: String {
@@ -43,13 +76,13 @@ class PreviewDialogViewModel: ObservableObject {
 
     /// Remaining time formatted as HH:MM:SS or MM:SS
     var remainingTimeString: String {
-        formatTime(recording.duration - currentTime)
+        formatTime(duration - currentTime)
     }
 
     /// Playback progress (0.0 to 1.0)
     var progress: Double {
-        guard recording.duration > 0 else { return 0 }
-        return min(max(currentTime / recording.duration, 0), 1)
+        guard duration > 0 else { return 0 }
+        return min(max(currentTime / duration, 0), 1)
     }
 
     /// Playback speed as formatted string
@@ -78,13 +111,13 @@ class PreviewDialogViewModel: ObservableObject {
         guard !isPlaying else { return }
 
         // Reset to beginning if at the end
-        if currentTime >= recording.duration {
+        if currentTime >= duration {
             currentTime = 0
         }
 
         isPlaying = true
         startPlaybackTimer()
-        print("▶️ Playing: \(recording.filename)")
+        print("▶️ Playing: \(filename)")
     }
 
     /// Pause playback
@@ -93,12 +126,12 @@ class PreviewDialogViewModel: ObservableObject {
 
         isPlaying = false
         stopPlaybackTimer()
-        print("⏸ Paused: \(recording.filename)")
+        print("⏸ Paused: \(filename)")
     }
 
     /// Seek to specific time
     func seek(to time: TimeInterval) {
-        currentTime = min(max(time, 0), recording.duration)
+        currentTime = min(max(time, 0), duration)
         print("⏩ Seeked to: \(currentTimeString)")
     }
 
@@ -136,42 +169,48 @@ class PreviewDialogViewModel: ObservableObject {
 
     /// Open trim dialog
     func trimVideo() {
-        print("✂️ Trim video clicked: \(recording.filename)")
-        NotificationCenter.default.post(
-            name: .openTrim,
-            object: nil,
-            userInfo: ["recording": recording]
-        )
+        print("✂️ Trim video clicked: \(filename)")
+        if let recording = recording {
+            NotificationCenter.default.post(
+                name: .openTrim,
+                object: nil,
+                userInfo: ["recording": recording]
+            )
+        } else if let metadata = metadata {
+            // TODO: Support trim for real recordings in Week 9
+            print("⚠️ Trim not yet supported for real recordings")
+        }
     }
 
     /// Share recording
     func shareRecording() {
-        print("📤 Share recording: \(recording.filename)")
+        print("📤 Share recording: \(filename)")
         // TODO: Show macOS share sheet
     }
 
     /// Show in Finder
     func showInFinder() {
-        print("📂 Show in Finder: \(recording.filename)")
-        // TODO: Open Finder to recording location
-        // For now, just log the action
+        print("📂 Show in Finder: \(filename)")
+        if let fileURL = fileURL {
+            NSWorkspace.shared.activateFileViewerSelecting([fileURL])
+        }
     }
 
     /// Delete recording
     func deleteRecording() {
-        print("🗑 Delete recording: \(recording.filename)")
+        print("🗑 Delete recording: \(filename)")
         // TODO: Show confirmation and delete
     }
 
     /// Rename recording
     func renameRecording() {
-        print("✏️ Rename recording: \(recording.filename)")
+        print("✏️ Rename recording: \(filename)")
         // TODO: Show rename dialog
     }
 
     /// Share to device (AirDrop, etc.)
     func shareToDevice() {
-        print("📱 Share to device: \(recording.filename)")
+        print("📱 Share to device: \(filename)")
         // TODO: Show device sharing options
     }
 
@@ -213,8 +252,8 @@ class PreviewDialogViewModel: ObservableObject {
                 self.currentTime += (0.1 * self.playbackSpeed)
 
                 // Stop at end
-                if self.currentTime >= self.recording.duration {
-                    self.currentTime = self.recording.duration
+                if self.currentTime >= self.duration {
+                    self.currentTime = self.duration
                     self.pause()
                 }
             }

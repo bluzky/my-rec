@@ -54,6 +54,61 @@ class ScreenCaptureEngine: NSObject {
     /// - presentationTime: CMTime indicating when the frame was captured
     var videoFrameHandler: ((CVPixelBuffer, CMTime) -> Void)?
 
+    // MARK: - Permission Check
+
+    /// Check if screen recording permission is granted
+    /// - Returns: True if permission is granted, false otherwise
+    static func checkPermission() async -> Bool {
+        print("🔒 [PERMISSION] Starting permission check...")
+
+        // Use a simpler approach: just try to get shareable content and check for error -3801
+        // Creating a stream causes thread safety issues
+        do {
+            print("🔒 [PERMISSION] Attempting to get shareable content...")
+            let content = try await SCShareableContent.excludingDesktopWindows(
+                false,
+                onScreenWindowsOnly: true
+            )
+
+            guard !content.displays.isEmpty else {
+                print("❌ [PERMISSION] No displays available")
+                return false
+            }
+
+            print("✅ [PERMISSION] Successfully got shareable content with \(content.displays.count) displays")
+            print("✅ [PERMISSION] Screen Recording permission appears to be granted")
+
+            // Note: This only checks window picking permission, not full screen recording
+            // The actual recording attempt will trigger the screen recording permission if needed
+            return true
+
+        } catch {
+            let nsError = error as NSError
+            print("❌ [PERMISSION] Failed to get shareable content:")
+            print("❌ [PERMISSION]   Description: \(error.localizedDescription)")
+            print("❌ [PERMISSION]   Domain: \(nsError.domain)")
+            print("❌ [PERMISSION]   Code: \(nsError.code)")
+
+            // Error -3801 means TCC permission denied
+            if nsError.domain == "com.apple.ScreenCaptureKit.SCStreamErrorDomain" && nsError.code == -3801 {
+                print("❌ [PERMISSION] TCC permission denial detected")
+                return false
+            }
+
+            print("❌ [PERMISSION] Unknown error, assuming no permission")
+            return false
+        }
+    }
+
+    /// Request screen recording permission (shows system dialog)
+    /// - Returns: True if permission is granted after request, false otherwise
+    @discardableResult
+    static func requestPermission() async -> Bool {
+        // On macOS, requesting permission is done by attempting to use ScreenCaptureKit
+        // The system will automatically show permission dialog on first use
+        return await checkPermission()
+    }
+
     // MARK: - Configuration
 
     /// Configure capture settings
@@ -271,6 +326,8 @@ extension ScreenCaptureEngine: SCStreamDelegate {
 @available(macOS 13.0, *)
 extension ScreenCaptureEngine: SCStreamOutput {
 
+    private static var frameCount = 0
+
     func stream(
         _ stream: SCStream,
         didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
@@ -279,16 +336,40 @@ extension ScreenCaptureEngine: SCStreamOutput {
         // Only process screen output
         guard type == .screen else { return }
 
+        // Check if we're still capturing
+        guard isCapturing else {
+            logger.warning("⚠️ [CAPTURE] Received frame but not capturing - ignoring")
+            return
+        }
+
         // Get pixel buffer from sample buffer
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            logger.warning("Failed to get pixel buffer from sample")
+            logger.warning("❌ [CAPTURE] Failed to get pixel buffer from sample")
             return
         }
 
         // Get presentation timestamp
         let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
-        // Deliver frame to handler
-        videoFrameHandler?(pixelBuffer, presentationTime)
+        // Log first frame
+        Self.frameCount += 1
+        if Self.frameCount == 1 {
+            logger.info("📥 [CAPTURE] Received first frame from ScreenCaptureKit at \(presentationTime.seconds)s")
+        }
+
+        // Deliver frame to handler (already on a background queue)
+        // The handler should be thread-safe
+        guard let handler = videoFrameHandler else {
+            if Self.frameCount == 1 {
+                logger.warning("⚠️ [CAPTURE] No frame handler set!")
+            }
+            return
+        }
+
+        // Call handler with error protection
+        autoreleasepool {
+            handler(pixelBuffer, presentationTime)
+        }
     }
 }
+

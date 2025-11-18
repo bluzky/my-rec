@@ -13,7 +13,7 @@ public class StatusBarController: NSObject, ObservableObject {
     private var menu: NSMenu?
     private var recordingView: NSView?
     private var cancellables = Set<AnyCancellable>()
-    private var timer: Timer?
+    private var recordingManager: Any? // Use Any to avoid availability issues
 
     @Published var isRecording = false
     @Published var isPaused = false
@@ -29,6 +29,15 @@ public class StatusBarController: NSObject, ObservableObject {
     // Menu items that need state updates (for idle state only)
     private var recordMenuItem: NSMenuItem?
 
+    public init(recordingManager: Any? = nil) {
+        self.recordingManager = recordingManager
+        super.init()
+        setupStatusItem()
+        buildMenu()
+        observeRecordingState()
+        observeRecordingManager()
+    }
+
     public override init() {
         super.init()
         setupStatusItem()
@@ -37,7 +46,6 @@ public class StatusBarController: NSObject, ObservableObject {
     }
 
     deinit {
-        timer?.invalidate()
         cancellables.removeAll()
     }
 
@@ -248,7 +256,35 @@ public class StatusBarController: NSObject, ObservableObject {
         menu?.addItem(quitMenuItem)
     }
 
-    
+    private func observeRecordingManager() {
+        guard recordingManager != nil else { return }
+
+        if #available(macOS 13.0, *) {
+            guard let manager = recordingManager as? RecordingManager else { return }
+
+            // Observe duration changes from RecordingManager
+            Task { @MainActor in
+                manager.$duration
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] duration in
+                        self?.elapsedTime = duration
+                        // Simulate file size based on duration (avg ~5MB/s for 1080p30)
+                        self?.simulatedFileSize = Int64(duration * 5.2)
+                        self?.updateRecordingControls()
+                    }
+                    .store(in: &self.cancellables)
+
+                // Observe state changes from RecordingManager
+                manager.$state
+                    .receive(on: DispatchQueue.main)
+                    .sink { [weak self] state in
+                        self?.updateMenuForState(state)
+                    }
+                    .store(in: &self.cancellables)
+            }
+        }
+    }
+
     private func observeRecordingState() {
         // Subscribe to RecordingManager state changes
         NotificationCenter.default.publisher(for: .recordingStateChanged)
@@ -291,7 +327,6 @@ public class StatusBarController: NSObject, ObservableObject {
             case .idle:
                 print("🔄 StatusBarController: Switching to idle display")
                 self?.updateIdleDisplay()
-                self?.stopTimer()
                 self?.resetTimer()
                 self?.isRecording = false
                 self?.isPaused = false
@@ -299,14 +334,12 @@ public class StatusBarController: NSObject, ObservableObject {
             case .recording:
                 print("🔄 StatusBarController: Switching to recording display")
                 self?.updateRecordingDisplay()
-                self?.startTimer()
                 self?.isRecording = true
                 self?.isPaused = false
 
             case .paused:
                 print("🔄 StatusBarController: Switching to paused display")
                 self?.updateRecordingDisplay()
-                self?.stopTimer()
                 self?.isRecording = true
                 self?.isPaused = true
             }
@@ -315,31 +348,9 @@ public class StatusBarController: NSObject, ObservableObject {
 
     // MARK: - Timer Management
 
-    private func startTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateTimer()
-        }
-    }
-
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-
     private func resetTimer() {
         elapsedTime = 0
         simulatedFileSize = 0
-    }
-
-    private func updateTimer() {
-        elapsedTime += 1
-
-        // Simulate file size growth (average ~5MB/s for 1080p30)
-        simulatedFileSize = Int64(Double(elapsedTime) * 5.2)
-
-        // Update inline recording controls
-        updateRecordingControls()
     }
 
     

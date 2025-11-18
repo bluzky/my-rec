@@ -89,6 +89,8 @@ class VideoEncoder {
         self.tempOutputURL = tempURL
 
         logger.info("Starting encoding: \(resolution.rawValue) @ \(frameRate.value)fps -> \(tempURL.path)")
+        logger.info("📁 [DEBUG] Temp file: \(tempURL.path)")
+        logger.info("📁 [DEBUG] Final file: \(outputURL.path)")
 
         // Create asset writer
         let writer: AVAssetWriter
@@ -159,29 +161,28 @@ class VideoEncoder {
     /// - Throws: EncoderError if frame cannot be appended
     func appendFrame(_ pixelBuffer: CVPixelBuffer, at presentationTime: CMTime) throws {
         guard isEncoding else {
+            logger.warning("⚠️ [ENCODER] appendFrame called but not encoding")
             throw EncoderError.notEncoding
         }
 
         guard let input = videoInput, let adaptor = pixelBufferAdaptor else {
+            logger.error("❌ [ENCODER] appendFrame called but input/adaptor not configured")
             throw EncoderError.notConfigured
         }
 
         // Store first frame time
         if startTime == nil {
             startTime = presentationTime
-            logger.info("First frame at time: \(presentationTime.seconds)s")
+            logger.info("🎞️ [ENCODER] First frame at time: \(presentationTime.seconds)s")
         }
 
-        // Wait for input to be ready
-        // In real-time encoding, we should handle backpressure
-        var waitCount = 0
-        while !input.isReadyForMoreMediaData {
-            if waitCount > 100 {
-                logger.warning("Input not ready after 100 attempts, dropping frame")
-                return
+        // Check if input is ready (non-blocking)
+        guard input.isReadyForMoreMediaData else {
+            // Drop frame if not ready - better than blocking the capture thread
+            if frameCount % 30 == 0 {
+                logger.warning("⚠️ [ENCODER] Dropping frame \(self.frameCount) - input not ready")
             }
-            Thread.sleep(forTimeInterval: 0.01) // Wait 10ms
-            waitCount += 1
+            return
         }
 
         // Append the frame
@@ -189,13 +190,18 @@ class VideoEncoder {
 
         if success {
             frameCount += 1
-            if frameCount % 30 == 0 {
-                logger.debug("Encoded frame \(self.frameCount) at \(presentationTime.seconds)s")
+            if frameCount == 1 {
+                logger.info("✅ [ENCODER] Successfully appended first frame!")
+            } else if frameCount % 30 == 0 {
+                logger.debug("🎞️ [ENCODER] Encoded frame \(self.frameCount) at \(presentationTime.seconds)s")
             }
         } else {
+            logger.error("❌ [ENCODER] Failed to append frame \(self.frameCount)")
             if let error = assetWriter?.error {
+                logger.error("❌ [ENCODER] Writer error: \(error.localizedDescription)")
                 throw EncoderError.appendFrameFailed(error)
             }
+            logger.error("❌ [ENCODER] Unknown error during append")
             throw EncoderError.appendFrameFailed(
                 NSError(domain: "VideoEncoder", code: -1,
                        userInfo: [NSLocalizedDescriptionKey: "Unknown error appending frame"])
@@ -243,17 +249,33 @@ class VideoEncoder {
 
         // Move temp file to final location (atomic write)
         do {
+            logger.info("📁 [DEBUG] Moving temp file...")
+            logger.info("📁 [DEBUG]   FROM: \(tempURL.path)")
+            logger.info("📁 [DEBUG]   TO:   \(finalURL.path)")
+
             // Remove existing file if it exists
             if FileManager.default.fileExists(atPath: finalURL.path) {
+                logger.info("📁 [DEBUG] Removing existing file at destination")
                 try FileManager.default.removeItem(at: finalURL)
+            }
+
+            // Verify temp file exists
+            guard FileManager.default.fileExists(atPath: tempURL.path) else {
+                logger.error("📁 [DEBUG] Temp file doesn't exist: \(tempURL.path)")
+                throw EncoderError.fileOperationFailed(
+                    NSError(domain: "VideoEncoder", code: -1,
+                           userInfo: [NSLocalizedDescriptionKey: "Temp file not found"])
+                )
             }
 
             // Move temp file to final location
             try FileManager.default.moveItem(at: tempURL, to: finalURL)
 
+            logger.info("✅ [DEBUG] File moved successfully!")
             logger.info("Encoding completed: \(finalURL.path)")
         } catch {
-            logger.error("Failed to move file: \(error.localizedDescription)")
+            logger.error("❌ [DEBUG] Failed to move file: \(error.localizedDescription)")
+            logger.error("📁 [DEBUG] Error details: \(String(describing: error))")
             throw EncoderError.fileOperationFailed(error)
         }
 

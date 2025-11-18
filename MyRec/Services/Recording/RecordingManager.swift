@@ -6,6 +6,7 @@ import OSLog
 
 /// Central coordinator for screen recording
 /// Manages the complete recording lifecycle: start → capture → encode → stop
+@available(macOS 13.0, *)
 @MainActor
 class RecordingManager: ObservableObject {
 
@@ -78,66 +79,107 @@ class RecordingManager: ObservableObject {
     /// - Parameter region: The screen region to capture (nil for full screen)
     /// - Throws: RecordingError if recording cannot start
     func startRecording(region: CGRect?) async throws {
+        logger.info("🎬 [START] Step 1: Checking state...")
         guard state.isIdle else {
             logger.warning("Attempted to start recording while state is \(String(describing: self.state))")
             throw RecordingError.alreadyRecording
         }
+        logger.info("🎬 [START] Step 1: State is idle ✓")
 
-        logger.info("Starting recording for region: \(String(describing: region))")
+        logger.info("🎬 [START] Starting recording for region: \(String(describing: region))")
 
         // Generate output URL
+        logger.info("🎬 [START] Step 2: Generating output URL...")
         let outputURL = generateOutputURL()
         currentOutputURL = outputURL
+        logger.info("🎬 [START] Step 2: Output URL: \(outputURL.path) ✓")
 
         // Get settings
+        logger.info("🎬 [START] Step 3: Getting settings...")
         let settings = settingsManager.defaultSettings
+        logger.info("🎬 [START] Step 3: Settings - Resolution: \(settings.resolution.rawValue), FPS: \(settings.frameRate.value) ✓")
 
         do {
             // Setup capture engine
-            try captureEngine.configure(
-                region: region,
-                resolution: settings.resolution,
-                frameRate: settings.frameRate,
-                showCursor: settings.cursorEnabled
-            )
+            logger.info("🎬 [START] Step 4: Configuring capture engine...")
+            do {
+                try captureEngine.configure(
+                    region: region,
+                    resolution: settings.resolution,
+                    frameRate: settings.frameRate,
+                    showCursor: settings.cursorEnabled
+                )
+                logger.info("🎬 [START] Step 4: Capture engine configured ✓")
+            } catch {
+                logger.error("🎬 [START] Step 4: Failed to configure capture engine: \(error.localizedDescription)")
+                throw error
+            }
 
             // Setup video encoder
-            try videoEncoder.startEncoding(
-                outputURL: outputURL,
-                resolution: settings.resolution,
-                frameRate: settings.frameRate
-            )
+            logger.info("🎬 [START] Step 5: Starting video encoder...")
+            do {
+                try videoEncoder.startEncoding(
+                    outputURL: outputURL,
+                    resolution: settings.resolution,
+                    frameRate: settings.frameRate
+                )
+                logger.info("🎬 [START] Step 5: Video encoder started ✓")
+            } catch {
+                logger.error("🎬 [START] Step 5: Failed to start encoder: \(error.localizedDescription)")
+                throw error
+            }
 
             // Connect capture to encoder
+            logger.info("🎬 [START] Step 6: Connecting capture to encoder...")
             captureEngine.videoFrameHandler = { [weak self] pixelBuffer, presentationTime in
                 self?.handleFrame(pixelBuffer, presentationTime)
             }
+            logger.info("🎬 [START] Step 6: Frame handler connected ✓")
 
             // Start capture
-            try await captureEngine.startCapture()
+            logger.info("🎬 [START] Step 7: Starting screen capture...")
+            do {
+                try await captureEngine.startCapture()
+                logger.info("🎬 [START] Step 7: Screen capture started ✓")
+            } catch {
+                logger.error("🎬 [START] Step 7: Failed to start capture: \(error.localizedDescription)")
+                logger.error("🎬 [START] Step 7: Error type: \(type(of: error))")
+                logger.error("🎬 [START] Step 7: Error details: \(String(describing: error))")
+                throw error
+            }
 
             // Update state
+            logger.info("🎬 [START] Step 8: Updating state...")
             let startTime = Date()
             recordingStartTime = startTime
             state = .recording(startTime: startTime)
             duration = 0
             frameCount = 0
+            logger.info("🎬 [START] Step 8: State updated to recording ✓")
 
             // Start duration timer
+            logger.info("🎬 [START] Step 9: Starting duration timer...")
             startDurationTimer()
+            logger.info("🎬 [START] Step 9: Duration timer started ✓")
 
             // Post notification
+            logger.info("🎬 [START] Step 10: Posting notification...")
             NotificationCenter.default.post(name: .recordingStateChanged, object: state)
+            logger.info("🎬 [START] Step 10: Notification posted ✓")
 
-            logger.info("Recording started successfully: \(outputURL.lastPathComponent)")
+            logger.info("✅ [START] Recording started successfully: \(outputURL.lastPathComponent)")
 
         } catch let error as ScreenCaptureEngine.CaptureError {
+            logger.error("❌ [START] Capture error: \(error.localizedDescription)")
             cleanup()
             throw RecordingError.captureSetupFailed(error)
         } catch let error as VideoEncoder.EncoderError {
+            logger.error("❌ [START] Encoder error: \(error.localizedDescription)")
             cleanup()
             throw RecordingError.encodingSetupFailed(error)
         } catch {
+            logger.error("❌ [START] Unknown error: \(error.localizedDescription)")
+            logger.error("❌ [START] Error type: \(type(of: error))")
             cleanup()
             throw RecordingError.recordingFailed(error)
         }
@@ -218,6 +260,13 @@ class RecordingManager: ObservableObject {
     // MARK: - Frame Handling
 
     private func handleFrame(_ pixelBuffer: CVPixelBuffer, _ presentationTime: CMTime) {
+        // Log first frame
+        if frameCount == 0 {
+            Task { @MainActor in
+                logger.info("🎞️ [FRAME] Received first frame at \(presentationTime.seconds)s")
+            }
+        }
+
         do {
             try videoEncoder.appendFrame(pixelBuffer, at: presentationTime)
             frameCount += 1
@@ -225,12 +274,14 @@ class RecordingManager: ObservableObject {
             // Log progress every 30 frames (once per second @ 30fps)
             if frameCount % 30 == 0 {
                 Task { @MainActor in
-                    logger.debug("Recording frame \(self.frameCount) at \(presentationTime.seconds)s")
+                    logger.debug("🎞️ [FRAME] Recording frame \(self.frameCount) at \(presentationTime.seconds)s")
                 }
             }
         } catch {
             Task { @MainActor in
-                logger.error("Failed to encode frame: \(error.localizedDescription)")
+                logger.error("❌ [FRAME] Failed to encode frame \(self.frameCount): \(error.localizedDescription)")
+                logger.error("❌ [FRAME] Error type: \(type(of: error))")
+                logger.error("❌ [FRAME] Error details: \(String(describing: error))")
             }
         }
     }

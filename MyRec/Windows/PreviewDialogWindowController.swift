@@ -39,6 +39,31 @@ class PreviewDialogWindowController: NSWindowController {
         self.viewModel = viewModel
     }
 
+    convenience init(metadata: VideoMetadata) {
+        // Create the view model with real metadata
+        let viewModel = PreviewDialogViewModel(metadata: metadata)
+
+        // Create the SwiftUI view
+        let previewDialogView = PreviewDialogView(viewModel: viewModel)
+        let hostingController = NSHostingController(rootView: previewDialogView)
+
+        // Create the window
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = metadata.filename
+        window.setContentSize(NSSize(width: 900, height: 600))
+        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.isReleasedWhenClosed = true // Release when closed
+        window.center()
+
+        // Set minimum size
+        window.minSize = NSSize(width: 800, height: 500)
+
+        // Initialize with window
+        self.init(window: window)
+        self.previewDialogView = previewDialogView
+        self.viewModel = viewModel
+    }
+
     /// Show the preview dialog window
     func show() {
         window?.makeKeyAndOrderFront(nil)
