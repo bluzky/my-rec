@@ -81,7 +81,7 @@ struct SettingsDialogView: View {
                             Text("Resolution:")
                                 .foregroundColor(.secondary)
                             Picker("", selection: $settingsManager.defaultResolution) {
-                                ForEach(Resolution.allCases.filter { $0 != .custom }, id: \.self) { resolution in
+                                ForEach(Resolution.allCases, id: \.self) { resolution in
                                     Text(resolution.rawValue).tag(resolution)
                                 }
                             }
@@ -186,7 +186,7 @@ struct SettingsDialogView: View {
 
     private func enableLaunchAtLogin() -> Bool {
         // Check if we have the necessary permissions to modify login items
-        guard Bundle.main.bundleURL != nil else {
+        guard !Bundle.main.bundleURL.path.isEmpty else {
             showingLaunchError = true
             launchErrorMessage = "App bundle not found"
             return false
@@ -220,7 +220,7 @@ struct SettingsDialogView: View {
     }
 
     private func disableLaunchAtLogin() -> Bool {
-        guard Bundle.main.bundleURL != nil else {
+        guard !Bundle.main.bundleURL.path.isEmpty else {
             showingLaunchError = true
             launchErrorMessage = "App bundle not found"
             return false

@@ -41,14 +41,25 @@ class VideoEncoder {
 
         // Configure video input
         let videoSettings = createVideoSettings()
+        print("🎥 VideoEncoder: Creating video input with settings: \(videoSettings)")
+
         videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         videoInput?.expectsMediaDataInRealTime = true
         videoInput?.transform = CGAffineTransform(rotationAngle: 0) // No rotation
 
         // Add input to writer
         guard let videoInput = videoInput,
-              let assetWriter = assetWriter,
-              assetWriter.canAdd(videoInput) else {
+              let assetWriter = assetWriter else {
+            print("❌ VideoEncoder: Failed to create video input or asset writer")
+            throw EncodingError.configurationFailed
+        }
+
+        guard assetWriter.canAdd(videoInput) else {
+            print("❌ VideoEncoder: Cannot add video input to asset writer")
+            print("  Asset writer status: \(assetWriter.status)")
+            if let error = assetWriter.error {
+                print("  Asset writer error: \(error)")
+            }
             throw EncodingError.configurationFailed
         }
 
@@ -76,14 +87,19 @@ class VideoEncoder {
             return
         }
 
-        // Ensure buffer is ready before appending
-        guard CMSampleBufferDataIsReady(sampleBuffer) else { return }
-
         // If writer already failed, surface the error once and stop
         if assetWriter.status == .failed {
+            print("❌ VideoEncoder: Asset writer failed, cannot append frame")
             if let error = assetWriter.error {
+                print("  Error: \(error)")
                 onError?(error)
             }
+            return
+        }
+
+        // Ensure buffer is ready before appending
+        guard CMSampleBufferDataIsReady(sampleBuffer) else {
+            print("⚠️ VideoEncoder: Sample buffer not ready")
             return
         }
 
@@ -91,8 +107,9 @@ class VideoEncoder {
         if startTime == nil {
             startTime = sampleBuffer.presentationTimeStamp
             if let startTime = startTime {
+                print("⏱️ VideoEncoder: Starting session at \(startTime.seconds)s")
                 assetWriter.startSession(atSourceTime: startTime)
-                print("⏱️ VideoEncoder: Session started at \(startTime.seconds)s")
+                print("✅ VideoEncoder: Session started successfully")
             }
         }
 
@@ -107,12 +124,15 @@ class VideoEncoder {
             // Log progress
             if frameCount % 30 == 0 {
                 onFrameEncoded?(frameCount)
-                print("💾 Frame \(frameCount) encoded to MP4")
+                print("💾 Frame \(frameCount) encoded successfully")
             }
         } else {
-            // Don't throw error, just log and continue
-            if frameCount % 30 == 0 {
-                print("⚠️ Frame dropped at frame \(frameCount) - input not ready")
+            // Log append failure for debugging
+            print("❌ VideoEncoder: Failed to append frame \(frameCount + 1)")
+            print("  Video input ready: \(videoInput.isReadyForMoreMediaData)")
+            print("  Asset writer status: \(assetWriter.status)")
+            if assetWriter.status == .failed, let error = assetWriter.error {
+                print("  Asset writer error: \(error)")
             }
         }
     }
@@ -178,18 +198,24 @@ class VideoEncoder {
     private func createVideoSettings() -> [String: Any] {
         let bitrate = calculateBitrate()
 
+        print("🎥 VideoEncoder: Creating video settings...")
+        print("  Codec: H.264")
+        print("  Resolution: \(resolution.width)x\(resolution.height)")
+        print("  Frame Rate: \(frameRate.value)")
+        print("  Bitrate: \(bitrate)")
+
+        let compressionProperties: [String: Any] = [
+            AVVideoAverageBitRateKey: bitrate,
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
+            AVVideoMaxKeyFrameIntervalKey: frameRate.value * 2,
+            AVVideoExpectedSourceFrameRateKey: frameRate.value
+        ]
+
         return [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: resolution.width,
             AVVideoHeightKey: resolution.height,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: bitrate,
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                AVVideoMaxKeyFrameIntervalKey: frameRate.value * 2, // GOP = 2 seconds
-                AVVideoAllowFrameReorderingKey: true,
-                AVVideoExpectedSourceFrameRateKey: frameRate.value,
-                AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC
-            ]
+            AVVideoCompressionPropertiesKey: compressionProperties
         ]
     }
 
@@ -200,10 +226,6 @@ class VideoEncoder {
         case .fullHD:   baseRate = 5_000_000  // 5 Mbps
         case .twoK:     baseRate = 8_000_000  // 8 Mbps
         case .fourK:    baseRate = 15_000_000 // 15 Mbps
-        case .custom:
-            // For custom resolution, calculate based on actual dimensions
-            let pixels = resolution.width * resolution.height
-            baseRate = Int(Double(pixels) * 0.002) // ~0.002 bits per pixel
         }
 
         // Adjust for frame rate

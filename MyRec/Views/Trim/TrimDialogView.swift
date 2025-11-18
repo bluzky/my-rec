@@ -43,19 +43,7 @@ struct TrimDialogView: View {
                 .disabled(viewModel.isTrimming)
             }
         }
-        .toolbarRole(.editor)
-        .onKeyPress(.space) {
-            viewModel.togglePlayback()
-            return .handled
-        }
-        .onKeyPress(.leftArrow) {
-            viewModel.seekByFrame(-1)
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            viewModel.seekByFrame(1)
-            return .handled
-        }
+        .keyboardShortcut(.space, modifiers: [])
         .sheet(isPresented: $viewModel.isTrimming) {
             trimProgressSheet
         }
@@ -67,7 +55,11 @@ struct TrimDialogView: View {
         ZStack {
             // Frame preview placeholder - full width, no rounded corners
             Rectangle()
-                .fill(viewModel.currentFrameColor.gradient)
+                .fill(LinearGradient(
+                    gradient: Gradient(colors: [viewModel.currentFrameColor, viewModel.currentFrameColor.opacity(0.7)]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
 
             VStack(spacing: 8) {
                 // Play/pause button overlay
