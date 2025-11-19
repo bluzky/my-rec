@@ -3,6 +3,7 @@ import AVFoundation
 import CoreMedia
 
 /// Handles screen capture using ScreenCaptureKit (macOS 13+)
+@available(macOS 12.3, *)
 class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     // MARK: - Properties
     private var stream: SCStream?
@@ -15,6 +16,10 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     private var videoEncoder: VideoEncoder?
     private var tempURL: URL?
 
+    // Audio capture
+    private var audioCaptureEngine: AudioCaptureEngine?
+    private var captureAudio: Bool = false
+
     // MARK: - Callbacks
     var onFrameCaptured: ((Int, CMTime) -> Void)?
     var onError: ((Error) -> Void)?
@@ -26,12 +31,14 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     ///   - region: The screen region to capture
     ///   - resolution: The output resolution
     ///   - frameRate: The capture frame rate
-    func startCapture(region: CGRect, resolution: Resolution, frameRate: FrameRate) async throws {
+    ///   - withAudio: Whether to capture system audio (default: true)
+    func startCapture(region: CGRect, resolution: Resolution, frameRate: FrameRate, withAudio: Bool = true) async throws {
         guard !isCapturing else { return }
 
         self.captureRegion = region
         self.frameCount = 0
         self.startTime = nil
+        self.captureAudio = withAudio
 
         // ADD: Create temp file URL
         tempURL = FileManager.default.temporaryDirectory
@@ -56,8 +63,16 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
             print("❌ Encoding error: \(error)")
         }
 
-        try videoEncoder?.startEncoding()
+        try videoEncoder?.startEncoding(withAudio: captureAudio)
         print("✅ Encoder started - Output: \(tempURL.lastPathComponent)")
+        print("🎵 Audio capture enabled: \(captureAudio)")
+
+        // Initialize audio capture engine if needed
+        if captureAudio {
+            audioCaptureEngine = AudioCaptureEngine()
+            audioCaptureEngine?.startCapturing()
+            print("✅ AudioCaptureEngine initialized and started")
+        }
 
         // Setup stream (permission already checked in AppDelegate)
         try await setupStream(resolution: resolution, frameRate: frameRate)
@@ -120,8 +135,26 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     // MARK: - SCStreamOutput
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        guard type == .screen else { return }
+        if #available(macOS 13.0, *) {
+            switch type {
+            case .screen:
+                handleVideoSampleBuffer(sampleBuffer)
 
+            case .audio:
+                handleAudioSampleBuffer(sampleBuffer)
+
+            @unknown default:
+                break
+            }
+        } else {
+            // macOS 12.3 only supports screen output
+            if type == .screen {
+                handleVideoSampleBuffer(sampleBuffer)
+            }
+        }
+    }
+
+    private func handleVideoSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         frameCount += 1
 
         // Send frame to encoder
@@ -145,6 +178,11 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
 
         // Notify callback
         onFrameCaptured?(frameCount, elapsed)
+    }
+
+    private func handleAudioSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
+        // Send audio to video encoder
+        videoEncoder?.appendAudio(sampleBuffer)
     }
 
     // MARK: - SCStreamDelegate
@@ -248,11 +286,30 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
         config.showsCursor = true
         config.queueDepth = 5
 
+        // Configure audio capture (macOS 13+)
+        if captureAudio {
+            if #available(macOS 13.0, *) {
+                config.capturesAudio = true
+                config.sampleRate = 48000
+                config.channelCount = 2
+                print("🎵 Audio capture enabled: 48kHz stereo")
+            } else {
+                print("⚠️ Audio capture requires macOS 13.0 or later")
+            }
+        }
+
         // Create stream
         stream = SCStream(filter: filter, configuration: config, delegate: self)
 
-        // Add stream output
+        // Add stream output for video
         try stream?.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global())
+
+        // Add stream output for audio if enabled (macOS 13+)
+        if captureAudio {
+            if #available(macOS 13.0, *) {
+                try stream?.addStreamOutput(self, type: .audio, sampleHandlerQueue: .global())
+            }
+        }
 
         // Start capture
         try await stream?.startCapture()

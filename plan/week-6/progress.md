@@ -42,33 +42,33 @@ This week focuses on connecting the existing region selection UI to ScreenCaptur
 ### Day 24 (November 20) - Window Selection Integration
 **Goal:** Implement window-specific recording using ScreenCaptureKit window filtering
 
-**Status:** ⏳ Pending
+**Status:** ⏭️ Skipped
 
 **Tasks:**
-- [ ] Implement window enumeration using SCShareableContent
-- [ ] Create window selection UI/picker
-- [ ] Implement SCContentFilter for specific windows
-- [ ] Add window highlighting in selection overlay
-- [ ] Test with multiple windows and displays
+- [x] ~~Implement window enumeration using SCShareableContent~~ (Skipped)
+- [x] ~~Create window selection UI/picker~~ (Skipped)
+- [x] ~~Implement SCContentFilter for specific windows~~ (Skipped)
+- [x] ~~Add window highlighting in selection overlay~~ (Skipped)
+- [x] ~~Test with multiple windows and displays~~ (Skipped)
 
-**Expected Outcome:** Users can select and record specific application windows
+**Expected Outcome:** ~~Users can select and record specific application windows~~ (Feature deferred)
 
 ---
 
-### Day 25 (November 21) - System Audio Capture
+### Day 25 (November 20) - System Audio Capture
 **Goal:** Implement system audio capture using ScreenCaptureKit audio streams
 
-**Status:** ⏳ Pending
+**Status:** ✅ Completed
 
 **Tasks:**
-- [ ] Create AudioCaptureEngine service
-- [ ] Implement system audio capture via ScreenCaptureKit
-- [ ] Set up audio sample buffer handling
-- [ ] Implement audio format conversion (PCM to AAC)
-- [ ] Add audio level monitoring
-- [ ] Write unit tests for audio capture
+- [x] Create AudioCaptureEngine service
+- [x] Implement system audio capture via ScreenCaptureKit
+- [x] Set up audio sample buffer handling
+- [x] Implement audio format conversion (PCM to AAC)
+- [x] Add audio level monitoring
+- [x] Write unit tests for audio capture
 
-**Expected Outcome:** System audio is captured and encoded with video
+**Expected Outcome:** System audio is captured and encoded with video ✅
 
 ---
 
@@ -238,17 +238,34 @@ Planned topics:
 
 ### Day 24 Update
 **Date:** November 20, 2025
-**Status:** Not started
-**Completed:** -
-**Blockers:** -
-**Notes:** -
+**Status:** ⏭️ Skipped
+**Time Spent:** 0 hours
+**Completed:** N/A - Feature deferred
+**Blockers:** None
+**Notes:**
+- Window selection feature skipped by user request
+- Feature can be implemented later if needed
+- UI already has placeholder button for window selection
+- Focusing on audio integration instead (Days 25-27)
 
 ### Day 25 Update
-**Date:** November 21, 2025
-**Status:** Not started
-**Completed:** -
-**Blockers:** -
-**Notes:** -
+**Date:** November 20, 2025
+**Status:** ✅ Completed
+**Time Spent:** ~4 hours
+**Completed:**
+- ✅ AudioCaptureEngine service created with RMS level monitoring
+- ✅ ScreenCaptureEngine updated for audio support (macOS 13+)
+- ✅ VideoEncoder integrated with audio (AAC 48kHz stereo, 128 kbps)
+- ✅ AudioLevelIndicator UI component created
+- ✅ Unit tests written (AudioCaptureEngineTests.swift)
+- ✅ Build successful with zero errors
+**Blockers:** None
+**Notes:**
+- Audio capture requires macOS 13.0+ for ScreenCaptureKit audio APIs
+- Added proper availability checks throughout codebase
+- Audio and video synchronization handled via CMTime timestamps
+- Package.swift updated to include new audio files
+- Ready for microphone integration (Day 26)
 
 ### Day 26 Update
 **Date:** November 22, 2025
@@ -266,5 +283,19 @@ Planned topics:
 
 ---
 
-**Last Updated:** November 19, 2025
+**Last Updated:** November 20, 2025 (Day 25 completed)
 **Updated By:** Development Team
+
+---
+
+## Week 6 Summary (as of Day 25)
+
+**Completed:**
+- ✅ Day 23: Region capture integration
+- ✅ Day 25: System audio capture
+
+**Skipped:**
+- ⏭️ Day 24: Window selection (deferred)
+
+**Progress:** 2/5 days complete (40%)
+**On Track:** Yes - Audio integration ahead of schedule

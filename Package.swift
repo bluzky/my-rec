@@ -28,6 +28,10 @@ let package = Package(
                 "Services/StatusBar/StatusBarController.swift",
                 "Services/WindowDetection/WindowDetectionService.swift",
                 "Services/Keyboard/KeyboardShortcutManager.swift",
+                "Services/FileManager/FileManagerService.swift",
+                "Services/Recording/ScreenCaptureEngine.swift",
+                "Services/Recording/VideoEncoder.swift",
+                "Services/AudioCaptureEngine.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",
@@ -45,7 +49,8 @@ let package = Package(
                 "Views/RegionSelection/ResizeHandleView.swift",
                 "Views/RegionSelection/CountdownOverlay.swift",
                 "Views/Settings/SettingsBarView.swift",
-                "Views/Settings/SettingsDialogView.swift"
+                "Views/Settings/SettingsDialogView.swift",
+                "Views/Components/AudioLevelIndicator.swift"
             ],
             cSettings: [
                 .define("SWIFT_PACKAGE")
@@ -66,7 +71,7 @@ let package = Package(
             dependencies: [
                 "MyRecCore"
             ],
-            path: "MyRecTests"
+            path: "Tests/MyRecTests"
         ),
     ]
 )
