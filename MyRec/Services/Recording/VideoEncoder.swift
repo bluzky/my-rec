@@ -15,6 +15,10 @@ class VideoEncoder {
     private let resolution: Resolution
     private let frameRate: FrameRate
 
+    // Audio support
+    private var audioCaptureEngine: AudioCaptureEngine?
+    private var includeAudio: Bool = false
+
     // MARK: - Callbacks
     var onFrameEncoded: ((Int) -> Void)?
     var onEncodingFinished: ((URL, Int) -> Void)?
@@ -28,8 +32,10 @@ class VideoEncoder {
     }
 
     // MARK: - Public Interface
-    func startEncoding() throws {
+    func startEncoding(withAudio: Bool = true) throws {
         guard !isEncoding else { return }
+
+        self.includeAudio = withAudio
 
         // Remove existing file if present
         if FileManager.default.fileExists(atPath: outputURL.path) {
@@ -77,6 +83,15 @@ class VideoEncoder {
             assetWriterInput: videoInput,
             sourcePixelBufferAttributes: pixelBufferAttributes
         )
+
+        // Configure audio input if enabled
+        if includeAudio {
+            audioCaptureEngine = AudioCaptureEngine()
+            if let audioEngine = audioCaptureEngine {
+                try audioEngine.setupAudioInput(for: assetWriter)
+                print("🎵 VideoEncoder: Audio input configured")
+            }
+        }
 
         // Start writing session
         guard assetWriter.startWriting() else {
@@ -162,6 +177,13 @@ class VideoEncoder {
         }
     }
 
+    func appendAudio(_ sampleBuffer: CMSampleBuffer) {
+        guard isEncoding, includeAudio else { return }
+
+        // Pass audio buffer to audio capture engine
+        audioCaptureEngine?.processSampleBuffer(sampleBuffer)
+    }
+
     func finishEncoding() async throws -> URL {
         guard isEncoding else {
             throw EncodingError.notEncoding
@@ -171,10 +193,16 @@ class VideoEncoder {
 
         print("🔄 VideoEncoder: Finishing encoding...")
 
-        // Mark input as finished first
+        // Stop audio capture first
+        if includeAudio {
+            audioCaptureEngine?.stopCapturing()
+            print("✅ VideoEncoder: Audio input finished")
+        }
+
+        // Mark video input as finished
         if let videoInput = videoInput {
             videoInput.markAsFinished()
-            print("✅ VideoEncoder: Input marked as finished")
+            print("✅ VideoEncoder: Video input marked as finished")
         }
 
         // Wait a moment for pending frames to be processed
