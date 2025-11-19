@@ -2,20 +2,37 @@ import AVFoundation
 import CoreMedia
 import Combine
 
-/// Engine responsible for capturing and processing system audio
-class AudioCaptureEngine: NSObject, ObservableObject {
+/// Engine responsible for capturing and processing system audio and microphone input
+public class AudioCaptureEngine: NSObject, ObservableObject {
     // MARK: - Published Properties
 
     /// Indicates whether audio is currently being captured
     @Published var isCapturing = false
 
-    /// Current audio level (0.0 to 1.0)
+    /// Current system audio level (0.0 to 1.0)
     @Published var audioLevel: Float = 0.0
+
+    /// Current microphone audio level (0.0 to 1.0)
+    @Published var microphoneLevel: Float = 0.0
+
+    /// Indicates whether microphone is monitoring (for pre-recording level display)
+    @Published var isMicrophoneMonitoring = false
 
     // MARK: - Private Properties
 
     private var assetWriterInput: AVAssetWriterInput?
     private var audioQueue = DispatchQueue(label: "com.myrec.audio", qos: .userInitiated)
+
+    // Microphone-specific properties
+    private var audioEngine: AVAudioEngine?
+    private var microphoneInput: AVAudioInputNode?
+    private var microphoneMonitoringTimer: Timer?
+
+    // MARK: - Initialization
+
+    public override init() {
+        super.init()
+    }
 
     /// Audio encoding settings for AAC at 48kHz stereo
     private var audioSettings: [String: Any] {
@@ -84,9 +101,234 @@ class AudioCaptureEngine: NSObject, ObservableObject {
         audioLevel = 0.0
         assetWriterInput?.markAsFinished()
         assetWriterInput = nil
+        stopMicrophoneCapture()
+    }
+
+    // MARK: - Microphone Methods
+
+    /// Checks microphone permission status WITHOUT requesting
+    /// - Returns: True if permission already granted, false otherwise
+    func checkMicrophonePermission() -> Bool {
+        return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    }
+
+    /// Requests microphone permission (shows system dialog if needed)
+    /// - Returns: True if permission granted, false otherwise
+    func requestMicrophonePermission() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await AVCaptureDevice.requestAccess(for: .audio)
+        default:
+            return false
+        }
+    }
+
+    /// Starts monitoring microphone level (for pre-recording display)
+    /// This allows users to see their mic level before starting recording
+    func startMicrophoneMonitoring() {
+        guard !isMicrophoneMonitoring else { return }
+
+        do {
+            // Create audio engine
+            let engine = AVAudioEngine()
+            self.audioEngine = engine
+
+            let inputNode = engine.inputNode
+            self.microphoneInput = inputNode
+
+            // Get the input format from the input node
+            let inputFormat = inputNode.outputFormat(forBus: 0)
+
+            print("🎤 Input format: \(inputFormat)")
+            print("🎤 Sample rate: \(inputFormat.sampleRate)")
+            print("🎤 Channels: \(inputFormat.channelCount)")
+
+            // IMPORTANT: Use the input node's format, not a custom format
+            // Install tap for monitoring only (not recording yet)
+            inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+                self?.updateMicrophoneLevel(from: buffer)
+            }
+
+            // Prepare the engine
+            engine.prepare()
+
+            // Start engine
+            try engine.start()
+            isMicrophoneMonitoring = true
+            print("🎤 Microphone monitoring started successfully")
+            print("🎤 Engine running: \(engine.isRunning)")
+        } catch {
+            print("❌ Failed to start microphone monitoring: \(error)")
+            print("❌ Error details: \(error.localizedDescription)")
+        }
+    }
+
+    /// Stops monitoring microphone level
+    func stopMicrophoneMonitoring() {
+        guard isMicrophoneMonitoring else { return }
+
+        microphoneInput?.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+        microphoneInput = nil
+        isMicrophoneMonitoring = false
+        microphoneLevel = 0.0
+        print("🎤 Microphone monitoring stopped")
+    }
+
+    /// Starts capturing microphone audio for recording
+    func startMicrophoneCapture() throws {
+        guard !isCapturing else { return }
+
+        // If already monitoring, upgrade to capturing
+        if isMicrophoneMonitoring {
+            // Already set up, just mark as capturing
+            isCapturing = true
+            print("🎤 Microphone upgraded from monitoring to capturing")
+        } else {
+            // Start fresh
+            let engine = AVAudioEngine()
+            self.audioEngine = engine
+
+            let inputNode = engine.inputNode
+            self.microphoneInput = inputNode
+
+            let inputFormat = inputNode.outputFormat(forBus: 0)
+
+            // Install tap for both monitoring and recording
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
+                self?.processMicrophoneBuffer(buffer, at: time)
+            }
+
+            try engine.start()
+            isCapturing = true
+            print("🎤 Microphone capture started")
+        }
+    }
+
+    /// Stops capturing microphone audio
+    func stopMicrophoneCapture() {
+        guard audioEngine != nil else { return }
+
+        microphoneInput?.removeTap(onBus: 0)
+        audioEngine?.stop()
+        audioEngine = nil
+        microphoneInput = nil
+        microphoneLevel = 0.0
+        isCapturing = false
+        isMicrophoneMonitoring = false
+        print("🎤 Microphone capture stopped")
     }
 
     // MARK: - Private Methods
+
+    /// Processes microphone buffer for recording
+    private func processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
+        // Update level display
+        updateMicrophoneLevel(from: buffer)
+
+        // If capturing, convert and write to asset writer
+        guard isCapturing,
+              let assetWriterInput = assetWriterInput,
+              assetWriterInput.isReadyForMoreMediaData else {
+            return
+        }
+
+        // Convert PCM buffer to CMSampleBuffer
+        guard let sampleBuffer = convertToCMSampleBuffer(buffer, at: time) else {
+            return
+        }
+
+        // Write to asset writer
+        audioQueue.async {
+            assetWriterInput.append(sampleBuffer)
+        }
+    }
+
+    /// Updates microphone level from audio buffer
+    private func updateMicrophoneLevel(from buffer: AVAudioPCMBuffer) {
+        guard let channelData = buffer.floatChannelData else {
+            print("⚠️ No channel data in buffer")
+            return
+        }
+
+        let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else {
+            print("⚠️ Buffer frame length is 0")
+            return
+        }
+
+        let channelCount = Int(buffer.format.channelCount)
+
+        // Calculate RMS (Root Mean Square) for audio level
+        var sum: Float = 0
+
+        // Average across all channels
+        for channel in 0..<channelCount {
+            let channelDataPointer = channelData[channel]
+            for frame in 0..<frameLength {
+                let sample = channelDataPointer[frame]
+                sum += sample * sample
+            }
+        }
+
+        let totalSamples = Float(frameLength * channelCount)
+        let rms = sqrt(sum / totalSamples)
+
+        // Update on main thread for UI binding
+        DispatchQueue.main.async { [weak self] in
+            // Scale RMS to 0-1 range (multiply by factor for better visibility)
+            let scaledLevel = min(rms * 10.0, 1.0)
+            self?.microphoneLevel = scaledLevel
+
+            // Debug: print level occasionally
+            if Int.random(in: 0...50) == 0 {
+                print("🎤 Mic level: \(String(format: "%.2f", scaledLevel)) (RMS: \(String(format: "%.4f", rms)))")
+            }
+        }
+    }
+
+    /// Converts AVAudioPCMBuffer to CMSampleBuffer
+    private func convertToCMSampleBuffer(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) -> CMSampleBuffer? {
+        let formatDescription = buffer.format.formatDescription
+
+        var sampleBuffer: CMSampleBuffer?
+        var timing = CMSampleTimingInfo(
+            duration: CMTime(
+                value: CMTimeValue(buffer.frameLength),
+                timescale: CMTimeScale(buffer.format.sampleRate)
+            ),
+            presentationTimeStamp: CMTime(
+                seconds: Double(time.sampleTime) / buffer.format.sampleRate,
+                preferredTimescale: CMTimeScale(buffer.format.sampleRate)
+            ),
+            decodeTimeStamp: .invalid
+        )
+
+        let status = CMSampleBufferCreate(
+            allocator: kCFAllocatorDefault,
+            dataBuffer: nil,
+            dataReady: false,
+            makeDataReadyCallback: nil,
+            refcon: nil,
+            formatDescription: formatDescription,
+            sampleCount: CMItemCount(buffer.frameLength),
+            sampleTimingEntryCount: 1,
+            sampleTimingArray: &timing,
+            sampleSizeEntryCount: 0,
+            sampleSizeArray: nil,
+            sampleBufferOut: &sampleBuffer
+        )
+
+        guard status == noErr else {
+            print("❌ Failed to create CMSampleBuffer from microphone audio")
+            return nil
+        }
+
+        return sampleBuffer
+    }
 
     /// Updates the audio level based on the sample buffer's RMS value
     /// - Parameter sampleBuffer: The audio sample buffer to analyze
@@ -142,6 +384,7 @@ enum AudioError: Error, LocalizedError {
     case unsupportedSettings
     case cannotAddInput
     case captureFailed
+    case microphonePermissionDenied
 
     var errorDescription: String? {
         switch self {
@@ -151,6 +394,8 @@ enum AudioError: Error, LocalizedError {
             return "Cannot add audio input to the asset writer"
         case .captureFailed:
             return "Audio capture failed"
+        case .microphonePermissionDenied:
+            return "Microphone permission denied. Please enable in System Settings > Privacy & Security > Microphone"
         }
     }
 }

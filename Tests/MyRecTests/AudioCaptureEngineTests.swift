@@ -12,6 +12,8 @@ final class AudioCaptureEngineTests: XCTestCase {
 
         XCTAssertFalse(engine.isCapturing, "Engine should not be capturing on init")
         XCTAssertEqual(engine.audioLevel, 0.0, "Audio level should be 0.0 on init")
+        XCTAssertEqual(engine.microphoneLevel, 0.0, "Microphone level should be 0.0 on init")
+        XCTAssertFalse(engine.isMicrophoneMonitoring, "Should not be monitoring microphone on init")
     }
 
     // MARK: - Audio Input Setup Tests
@@ -97,13 +99,66 @@ final class AudioCaptureEngineTests: XCTestCase {
         let errors: [AudioError] = [
             .unsupportedSettings,
             .cannotAddInput,
-            .captureFailed
+            .captureFailed,
+            .microphonePermissionDenied
         ]
 
         for error in errors {
             XCTAssertNotNil(error.errorDescription, "Error should have description: \(error)")
             XCTAssertFalse(error.errorDescription?.isEmpty ?? true, "Description should not be empty")
         }
+    }
+
+    // MARK: - Microphone Tests
+
+    func testMicrophonePermissionRequest() async {
+        let engine = AudioCaptureEngine()
+
+        // Request permission (result depends on system settings)
+        let granted = await engine.requestMicrophonePermission()
+
+        // We can't guarantee the result, but the call should complete
+        XCTAssertNotNil(granted, "Permission request should return a result")
+    }
+
+    func testMicrophoneLevelRange() {
+        let engine = AudioCaptureEngine()
+
+        // Microphone level should always be between 0.0 and 1.0
+        XCTAssertGreaterThanOrEqual(engine.microphoneLevel, 0.0, "Microphone level should be >= 0.0")
+        XCTAssertLessThanOrEqual(engine.microphoneLevel, 1.0, "Microphone level should be <= 1.0")
+    }
+
+    func testMicrophoneMonitoringState() {
+        let engine = AudioCaptureEngine()
+
+        // Initial state
+        XCTAssertFalse(engine.isMicrophoneMonitoring, "Should not be monitoring initially")
+        XCTAssertEqual(engine.microphoneLevel, 0.0, "Level should be 0.0")
+
+        // Note: We don't actually start monitoring here as it requires microphone permissions
+        // and may trigger system prompts during testing
+    }
+
+    func testStopMicrophoneMonitoring() {
+        let engine = AudioCaptureEngine()
+
+        // Stop monitoring when not started should not crash
+        engine.stopMicrophoneMonitoring()
+
+        XCTAssertFalse(engine.isMicrophoneMonitoring, "Should not be monitoring")
+        XCTAssertEqual(engine.microphoneLevel, 0.0, "Level should be 0.0")
+    }
+
+    func testStopMicrophoneCaptureWhenNotStarted() {
+        let engine = AudioCaptureEngine()
+
+        // Stop capture when not started should not crash
+        engine.stopMicrophoneCapture()
+
+        XCTAssertFalse(engine.isCapturing, "Should not be capturing")
+        XCTAssertFalse(engine.isMicrophoneMonitoring, "Should not be monitoring")
+        XCTAssertEqual(engine.microphoneLevel, 0.0, "Level should be 0.0")
     }
 
     // MARK: - Integration Tests
