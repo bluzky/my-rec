@@ -156,6 +156,51 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
 
     // MARK: - Private Methods
 
+    /// Validates and clamps region to display bounds with minimum size enforcement
+    private func validateRegion(_ region: CGRect, for display: SCDisplay) -> CGRect {
+        var validated = region
+
+        // Enforce minimum size (100x100 pixels)
+        let minSize: CGFloat = 100
+        validated.size.width = max(minSize, region.width)
+        validated.size.height = max(minSize, region.height)
+
+        // Clamp to display bounds
+        let maxX = CGFloat(display.width) - validated.width
+        let maxY = CGFloat(display.height) - validated.height
+
+        validated.origin.x = max(0, min(region.origin.x, maxX))
+        validated.origin.y = max(0, min(region.origin.y, maxY))
+
+        // Ensure width and height don't exceed display bounds
+        validated.size.width = min(validated.width, CGFloat(display.width))
+        validated.size.height = min(validated.height, CGFloat(display.height))
+
+        if validated != region {
+            print("⚠️ Region adjusted from \(region) to \(validated)")
+        }
+
+        return validated
+    }
+
+    /// Converts NSWindow/macOS coordinates to ScreenCaptureKit coordinates
+    /// macOS NSWindow coordinates: origin at bottom-left of screen
+    /// ScreenCaptureKit coordinates: origin at top-left of screen
+    private func convertToScreenCaptureCoordinates(_ region: CGRect, displayHeight: Int) -> CGRect {
+        // NSWindow coordinates have origin at bottom-left
+        // ScreenCaptureKit expects origin at top-left
+        // Formula: sck_y = displayHeight - nswindow_y - height
+
+        let sckY = CGFloat(displayHeight) - region.origin.y - region.height
+
+        return CGRect(
+            x: region.origin.x,
+            y: sckY,
+            width: region.width,
+            height: region.height
+        )
+    }
+
     private func setupStream(resolution: Resolution, frameRate: FrameRate) async throws {
         // Get available content
         let content = try await SCShareableContent.excludingDesktopWindows(
@@ -172,8 +217,32 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
 
         // Configure stream
         let config = SCStreamConfiguration()
-        config.width = resolution.width
-        config.height = resolution.height
+
+        // Use custom region if provided, otherwise use resolution dimensions
+        if captureRegion != .zero {
+            // Validate and clamp region to display bounds
+            let validatedRegion = validateRegion(captureRegion, for: display)
+
+            // Convert to ScreenCaptureKit coordinate system (origin at top-left)
+            let sckRegion = convertToScreenCaptureCoordinates(validatedRegion, displayHeight: display.height)
+
+            // Set the source rect to capture only the selected region
+            config.sourceRect = sckRegion
+
+            // Set output dimensions to match the region size
+            config.width = Int(validatedRegion.width)
+            config.height = Int(validatedRegion.height)
+
+            print("📐 Using custom region: \(validatedRegion)")
+            print("📐 SCK coordinates: \(sckRegion)")
+            print("📐 Output size: \(config.width)x\(config.height)")
+        } else {
+            // Full screen capture using resolution settings
+            config.width = resolution.width
+            config.height = resolution.height
+            print("📐 Using full screen with resolution: \(resolution.displayName)")
+        }
+
         config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(frameRate.value))
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.showsCursor = true
