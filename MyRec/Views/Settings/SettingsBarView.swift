@@ -171,21 +171,27 @@ struct SettingsBarView: View {
                     icon: "video.fill",
                     isOn: $settingsManager.defaultSettings.cameraEnabled,
                     help: "Camera",
-                    isDisabled: isRecording
+                    isDisabled: isRecording,
+                    onIcon: "video.fill",
+                    offIcon: "video.slash.fill"
                 )
 
                 ToggleIconButton(
                     icon: "speaker.wave.2.fill",
                     isOn: $settingsManager.defaultSettings.audioEnabled,
                     help: "System Sound",
-                    isDisabled: isRecording
+                    isDisabled: isRecording,
+                    onIcon: "speaker.wave.2.fill",
+                    offIcon: "speaker.slash.fill"
                 )
 
                 ToggleIconButton(
                     icon: "mic.fill",
                     isOn: $settingsManager.defaultSettings.microphoneEnabled,
                     help: "Microphone",
-                    isDisabled: isRecording
+                    isDisabled: isRecording,
+                    onIcon: "mic.fill",
+                    offIcon: "mic.slash.fill"
                 )
             }
             .padding(.horizontal, 8)
@@ -291,7 +297,19 @@ struct ToggleIconButton: View {
     let help: String
     var isDisabled: Bool = false
 
+    // Optional custom icons for on/off states
+    var onIcon: String?
+    var offIcon: String?
+
     @State private var isHovering = false
+
+    // Computed property to determine which icon to use
+    private var displayIcon: String {
+        if let onIcon = onIcon, let offIcon = offIcon {
+            return isOn ? onIcon : offIcon
+        }
+        return icon
+    }
 
     var body: some View {
         Button(action: {
@@ -301,7 +319,7 @@ struct ToggleIconButton: View {
                 }
             }
         }) {
-            Image(systemName: icon)
+            Image(systemName: displayIcon)
                 .font(.system(size: 18))
                 .foregroundColor(.primary.opacity(isDisabled ? 0.3 : (isOn ? 0.9 : (isHovering ? 0.65 : 0.5))))
                 .frame(width: 44, height: 44)
