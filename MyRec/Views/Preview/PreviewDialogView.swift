@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVKit
 
 struct PreviewDialogView: View {
     @StateObject var viewModel: PreviewDialogViewModel
@@ -67,23 +68,27 @@ struct PreviewDialogView: View {
             // Dark gray 900 background
             Color(red: 0.067, green: 0.094, blue: 0.153)
 
-            VStack(spacing: 16) {
-                // Play/pause icon
-                Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 64))
-                    .foregroundColor(.white)
-                    .shadow(radius: 8)
-                    .onTapGesture {
-                        viewModel.togglePlayback()
+            if let player = viewModel.player {
+                // Real video player
+                VideoPlayer(player: player)
+                    .onAppear {
+                        print("▶️ Video player appeared")
                     }
+            } else {
+                // Loading placeholder
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .tint(.white)
 
-                Text("Video Preview Placeholder")
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.8))
+                    Text("Loading video...")
+                        .font(.title3)
+                        .foregroundColor(.white.opacity(0.8))
 
-                Text(viewModel.recording.filename)
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+                    Text(viewModel.recording.filename)
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.6))
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -259,6 +264,6 @@ struct PlaybackSpeedMenu: View {
 // MARK: - Preview
 
 #Preview {
-    PreviewDialogView(viewModel: PreviewDialogViewModel(recording: .sample))
+    PreviewDialogView(viewModel: PreviewDialogViewModel(recording: .mock()))
         .frame(width: 900, height: 600)
 }

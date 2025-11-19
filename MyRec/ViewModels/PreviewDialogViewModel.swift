@@ -8,13 +8,16 @@
 import Foundation
 import SwiftUI
 import Combine
+import AVKit
+import AppKit
 
 @MainActor
 class PreviewDialogViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    @Published var recording: MockRecording
+    @Published var recording: VideoMetadata
+    @Published var player: AVPlayer?
     @Published var isPlaying: Bool = false
     @Published var currentTime: TimeInterval = 0
     @Published var volume: Double = 1.0
@@ -23,15 +26,17 @@ class PreviewDialogViewModel: ObservableObject {
 
     // MARK: - Private Properties
 
-    private var playbackTimer: Timer?
+    private var timeObserver: Any?
+    private var statusObserver: NSKeyValueObservation?
     private let availablePlaybackSpeeds: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
     private var volumeBeforeMute: Double = 1.0
 
     // MARK: - Initialization
 
-    init(recording: MockRecording) {
+    init(recording: VideoMetadata) {
         self.recording = recording
         print("🎬 Preview dialog initialized for: \(recording.filename)")
+        setupPlayer()
     }
 
     // MARK: - Computed Properties
@@ -75,30 +80,36 @@ class PreviewDialogViewModel: ObservableObject {
 
     /// Start playback
     func play() {
+        guard let player = player else { return }
         guard !isPlaying else { return }
 
         // Reset to beginning if at the end
         if currentTime >= recording.duration {
+            player.seek(to: .zero)
             currentTime = 0
         }
 
+        player.play()
         isPlaying = true
-        startPlaybackTimer()
         print("▶️ Playing: \(recording.filename)")
     }
 
     /// Pause playback
     func pause() {
+        guard let player = player else { return }
         guard isPlaying else { return }
 
+        player.pause()
         isPlaying = false
-        stopPlaybackTimer()
         print("⏸ Paused: \(recording.filename)")
     }
 
     /// Seek to specific time
     func seek(to time: TimeInterval) {
-        currentTime = min(max(time, 0), recording.duration)
+        guard let player = player else { return }
+        let seekTime = min(max(time, 0), recording.duration)
+        player.seek(to: CMTime(seconds: seekTime, preferredTimescale: 600))
+        currentTime = seekTime
         print("⏩ Seeked to: \(currentTimeString)")
     }
 
@@ -111,12 +122,15 @@ class PreviewDialogViewModel: ObservableObject {
     func setVolume(_ newVolume: Double) {
         let clamped = min(max(newVolume, 0), 1)
         volume = clamped
+        player?.volume = Float(clamped)
 
         if clamped == 0 {
             isMuted = true
+            player?.isMuted = true
         } else {
             volumeBeforeMute = clamped
             isMuted = false
+            player?.isMuted = false
         }
     }
 
@@ -129,6 +143,7 @@ class PreviewDialogViewModel: ObservableObject {
             volumeBeforeMute = volume > 0 ? volume : volumeBeforeMute
             volume = 0
             isMuted = true
+            player?.isMuted = true
         }
     }
 
@@ -153,8 +168,7 @@ class PreviewDialogViewModel: ObservableObject {
     /// Show in Finder
     func showInFinder() {
         print("📂 Show in Finder: \(recording.filename)")
-        // TODO: Open Finder to recording location
-        // For now, just log the action
+        NSWorkspace.shared.activateFileViewerSelecting([recording.fileURL])
     }
 
     /// Delete recording
@@ -179,51 +193,77 @@ class PreviewDialogViewModel: ObservableObject {
     func cyclePlaybackSpeed() {
         if let currentIndex = availablePlaybackSpeeds.firstIndex(of: playbackSpeed) {
             let nextIndex = (currentIndex + 1) % availablePlaybackSpeeds.count
-            playbackSpeed = availablePlaybackSpeeds[nextIndex]
-            print("⏩ Playback speed: \(playbackSpeedString)")
-
-            // Restart timer with new speed if playing
-            if isPlaying {
-                stopPlaybackTimer()
-                startPlaybackTimer()
-            }
+            setPlaybackSpeed(availablePlaybackSpeeds[nextIndex])
         }
     }
 
     /// Set playback speed to a specific value
     func setPlaybackSpeed(_ speed: Double) {
         playbackSpeed = speed
+        player?.rate = Float(speed)
         print("⏩ Playback speed set to: \(playbackSpeedString)")
-
-        // Restart timer with new speed if playing
-        if isPlaying {
-            stopPlaybackTimer()
-            startPlaybackTimer()
-        }
     }
 
     // MARK: - Private Methods
 
-    private func startPlaybackTimer() {
-        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+    private func setupPlayer() {
+        print("🎬 Setting up player for: \(recording.filename)")
+
+        // Create player with video URL
+        player = AVPlayer(url: recording.fileURL)
+
+        // Set initial volume
+        player?.volume = Float(volume)
+
+        // Add periodic time observer
+        let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self = self else { return }
 
             Task { @MainActor in
-                // Increment time based on playback speed
-                self.currentTime += (0.1 * self.playbackSpeed)
+                self.currentTime = time.seconds
 
-                // Stop at end
-                if self.currentTime >= self.recording.duration {
-                    self.currentTime = self.recording.duration
+                // Auto-pause at end
+                if let duration = self.player?.currentItem?.duration.seconds,
+                   duration.isFinite,
+                   self.currentTime >= duration {
                     self.pause()
+                }
+            }
+        }
+
+        // Observe player status
+        statusObserver = player?.currentItem?.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard let self = self else { return }
+
+            Task { @MainActor in
+                if item.status == .readyToPlay {
+                    print("✅ Player ready to play")
+                    // Auto-play
+                    self.play()
+                } else if item.status == .failed {
+                    print("❌ Player failed: \(item.error?.localizedDescription ?? "Unknown error")")
                 }
             }
         }
     }
 
-    private func stopPlaybackTimer() {
-        playbackTimer?.invalidate()
-        playbackTimer = nil
+    private func cleanup() {
+        print("🗑 Cleaning up player")
+
+        // Remove time observer
+        if let timeObserver = timeObserver {
+            player?.removeTimeObserver(timeObserver)
+            self.timeObserver = nil
+        }
+
+        // Remove status observer
+        statusObserver?.invalidate()
+        statusObserver = nil
+
+        // Pause and release player
+        player?.pause()
+        player = nil
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
@@ -242,8 +282,7 @@ class PreviewDialogViewModel: ObservableObject {
 
     nonisolated deinit {
         MainActor.assumeIsolated {
-            playbackTimer?.invalidate()
-            playbackTimer = nil
+            cleanup()
         }
         print("🗑 Preview dialog view model deallocated")
     }

@@ -157,16 +157,10 @@ class FileManagerService {
     /// - Parameter url: Video file URL
     /// - Returns: VideoMetadata with extracted information
     private func extractMetadata(from url: URL) async throws -> VideoMetadata {
-        let asset = AVAsset(url: url)
+        let asset = AVURLAsset(url: url)
 
-        // Load asset properties
-        try await asset.loadValues(forKeys: ["duration", "tracks"])
-
-        // Check if asset is readable
-        let status = asset.statusOfValue(forKey: "duration", error: nil)
-        guard status == .loaded else {
-            throw FileError.metadataExtractionFailed
-        }
+        // Load asset properties and verify they loaded successfully
+        _ = try await asset.load(.duration, .tracks)
 
         // Get file attributes
         let attributes = try fileManager.attributesOfItem(atPath: url.path)
@@ -189,19 +183,23 @@ class FileManagerService {
             let height = Int(naturalSize.height)
 
             // Find matching resolution or use closest
-            resolution = Resolution.allCases.min { res1, res2 in
+            if let closestResolution = Resolution.allCases.min(by: { res1, res2 in
                 let diff1 = abs(res1.width - width) + abs(res1.height - height)
                 let diff2 = abs(res2.width - width) + abs(res2.height - height)
                 return diff1 < diff2
-            } ?? .fullHD
+            }) {
+                resolution = closestResolution
+            }
 
             // Get nominal frame rate
             let nominalFrameRate = try await videoTrack.load(.nominalFrameRate)
-            frameRate = FrameRate.allCases.min { abs($0.value - Int(nominalFrameRate)) < abs($1.value - Int(nominalFrameRate)) } ?? .fps30
+            if let closestFrameRate = FrameRate.allCases.min(by: { abs($0.value - Int(nominalFrameRate)) < abs($1.value - Int(nominalFrameRate)) }) {
+                frameRate = closestFrameRate
+            }
         }
 
-        // Get duration in seconds
-        let duration = asset.duration.seconds
+        // Get duration in seconds using new API
+        let duration = try await asset.load(.duration).seconds
 
         return VideoMetadata(
             filename: url.lastPathComponent,
@@ -218,7 +216,7 @@ class FileManagerService {
     /// - Parameter url: File to show in Finder
     private func showFileInFinder(_ url: URL) async {
         // Switch to main thread for NSWorkspace
-        await MainActor.run {
+        _ = await MainActor.run {
             NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
         }
     }

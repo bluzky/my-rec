@@ -18,10 +18,11 @@ MyRec is a lightweight, minimalist screen recording application for macOS with e
 
 ## Project Progress
 
-**Current Phase:** UI-First Development (Weeks 1-4)
-**Current Week:** Week 3 ✅ Complete, Week 4 🔄 Next
-**Overall Progress:** ~25% (UI Foundation Complete)
-**Strategy Change:** Pivoted to UI-first approach on Day 8 for faster iteration and early UX validation
+**Current Phase:** Backend Integration (Week 5-6)
+**Current Week:** Week 5 ✅ Complete, Week 6 🔄 Next
+**Overall Progress:** ~50% (UI Complete + Basic Recording Working)
+**Strategy:** UI-first approach completed, backend integration in progress
+**Last Updated:** November 19, 2025
 
 ### Week 1 Summary (November 15, 2025)
 
@@ -86,10 +87,45 @@ MyRec is a lightweight, minimalist screen recording application for macOS with e
 - ✅ Auto-close home page on recording start
 
 **Next Up (Week 4):**
-- 🔲 Preview Dialog with video placeholder
-- 🔲 Trim Dialog with timeline component
-- 🔲 Countdown animation (3-2-1)
-- 🔲 Complete UI polish and integration
+- ✅ Preview Dialog with video placeholder
+- ✅ Trim Dialog with timeline component
+- ✅ Countdown animation (3-2-1)
+- ✅ Complete UI polish and integration
+
+---
+
+### Week 4-5 Summary (November 18, 2025)
+
+**Status:** ✅ **COMPLETE** - All UI components built, backend integration started
+
+**Week 4 Completed:**
+- ✅ Preview Dialog with AVPlayer integration
+- ✅ Trim Dialog with timeline scrubber
+- ✅ Countdown overlay (3-2-1 animation)
+- ✅ All UI components polished and tested
+
+**Week 5 Completed (Backend Integration):**
+- ✅ ScreenCaptureEngine with ScreenCaptureKit (macOS 13+)
+- ✅ VideoEncoder with H.264/MP4 encoding
+- ✅ FileManagerService with metadata extraction
+- ✅ Full screen recording working
+- ✅ Video playback in Preview Dialog
+- ✅ Files saving to ~/Movies/
+- ✅ Zero errors, zero warnings build
+
+**Known Limitations:**
+- ⚠️ Recording ONLY supports full screen (region selection UI built but not connected)
+- ⚠️ No audio capture yet (system audio + microphone)
+- ⚠️ No pause/resume functionality
+- ⚠️ No camera integration
+- ⚠️ Trim functionality UI built but not functional
+- ⚠️ Preview shows video but limited controls
+
+**Next Up (Week 6):**
+- 🔲 Connect region selection to ScreenCaptureKit
+- 🔲 System audio capture (CoreAudio)
+- 🔲 Microphone input (AVAudioEngine)
+- 🔲 Audio/video synchronization
 
 ---
 
@@ -273,20 +309,72 @@ File Format:           MP4 (H.264 video, AAC audio)
 
 ## 3. Development Phases
 
-### Phase 1: Foundation & Core Recording (Weeks 1-4)
+### Overall Phase Status Summary
+
+| Phase | Status | Progress | Key Gaps |
+|-------|--------|----------|----------|
+| **Phase 1:** Foundation & Core Recording | ✅ Complete* | 90% | Region/window capture not connected |
+| **Phase 2:** Recording Controls & Settings | 🔄 In Progress | 30% | No audio, pause/resume, camera |
+| **Phase 3:** Post-Recording & Preview | 🔄 Partial | 40% | File actions not functional |
+| **Phase 4:** Video Trimming | ❌ Not Started | 10% | UI only, no trim logic |
+| **Phase 5:** Polish & Launch | ❌ Not Started | 5% | All tasks pending |
+
+**Overall Project Completion:** ~50% (UI complete, core backend partial)
+
+### Remaining Sprint Roadmap (Weeks 6-16)
+
+**Week 6-7: Complete Phase 2**
+- Connect region/window selection to ScreenCaptureKit
+- Implement system audio capture (CoreAudio)
+- Implement microphone input (AVAudioEngine)
+- Add audio/video synchronization
+- Implement pause/resume functionality
+- Add camera preview integration
+
+**Week 8-9: Complete Phase 3**
+- Connect file management actions (delete, share, open)
+- Enhanced video playback controls
+- Full metadata extraction and display
+- Recording library/history management
+
+**Week 10-11: Phase 4 - Trim Functionality**
+- AVFoundation-based video trimming
+- Timeline scrubber with real video frames
+- Frame-by-frame navigation
+- Save trimmed video exports
+
+**Week 12-14: Phase 5 - Polish**
+- Performance optimization
+- Bug fixes and edge cases
+- Full test coverage
+- User documentation
+
+**Week 15-16: Launch**
+- Code signing and notarization
+- Beta testing
+- Final polish
+- Production release
+
+---
+
+### Phase 1: Foundation & Core Recording (Weeks 1-5)
 **Milestone: Basic recording functionality**
-**Status: Week 1 Complete (25%), Weeks 2-4 In Progress**
+**Status: ✅ COMPLETE** (with limitations - see below)
 
 #### Deliverables
 - [x] **Week 1 Complete:** Project setup with Swift + SwiftUI
 - [x] **Week 1 Complete:** Core data models (Resolution, FrameRate, RecordingSettings, RecordingState, VideoMetadata)
 - [x] **Week 1 Complete:** Settings persistence (SettingsManager)
 - [x] **Week 1 Complete:** Permission management (PermissionManager)
-- [ ] **Week 2:** System tray icon implementation
-- [ ] **Week 2-3:** Basic region selection interface
-- [ ] **Week 3-4:** ScreenCaptureKit integration
-- [ ] **Week 4:** Video encoding to MP4
-- [ ] **Week 4:** File save functionality
+- [x] **Week 2:** System tray icon implementation
+- [x] **Week 2-3:** Basic region selection interface (UI only - not connected to capture)
+- [x] **Week 5:** ScreenCaptureKit integration (full screen only)
+- [x] **Week 5:** Video encoding to MP4 (H.264)
+- [x] **Week 5:** File save functionality
+
+#### Known Gaps
+- ⚠️ Region/window capture not implemented (only full screen works)
+- ⚠️ Capture uses full display, ignores region parameter
 
 #### Tasks
 
@@ -337,17 +425,18 @@ File Format:           MP4 (H.264 video, AAC audio)
 
 ---
 
-### Phase 2: Recording Controls & Settings (Weeks 5-8)
+### Phase 2: Recording Controls & Settings (Weeks 6-8)
 **Milestone: Full recording workflow with settings**
+**Status: 🔄 IN PROGRESS** (~30% complete)
 
 #### Deliverables
-- [x] Recording settings bar with all controls
-- [x] Pause/resume functionality
-- [x] Countdown timer before recording
-- [x] System tray recording controls
-- [x] Resolution and FPS selection
-- [x] Audio options (system audio, microphone toggle)
-- [x] Camera toggle with preview overlay
+- [x] Recording settings bar with all controls (UI only)
+- [ ] Pause/resume functionality (not implemented)
+- [x] Countdown timer before recording (UI complete)
+- [x] System tray recording controls (UI complete, basic integration)
+- [x] Resolution and FPS selection (UI complete, basic integration)
+- [ ] Audio options (system audio, microphone toggle) - UI only, no audio capture
+- [ ] Camera toggle with preview overlay (UI only, not functional)
 
 #### Tasks
 1. **Settings Bar UI**
@@ -398,13 +487,14 @@ File Format:           MP4 (H.264 video, AAC audio)
 
 ### Phase 3: Post-Recording & Preview (Weeks 9-11)
 **Milestone: Complete post-recording workflow**
+**Status: 🔄 PARTIAL** (~40% complete)
 
 #### Deliverables
-- [x] Preview window with two-column layout
-- [x] Metadata display (file size, duration, resolution, FPS, format)
-- [x] Video playback controls
-- [x] File management actions (open, delete, share)
-- [x] Basic UI for trim feature entry
+- [x] Preview window with two-column layout (UI complete)
+- [x] Metadata display (file size, duration, resolution, FPS, format) - partial
+- [x] Video playback controls (basic AVPlayer integration working)
+- [ ] File management actions (open, delete, share) - UI only, not functional
+- [x] Basic UI for trim feature entry (UI complete, not functional)
 
 #### Tasks
 1. **Preview Window**
@@ -442,15 +532,16 @@ File Format:           MP4 (H.264 video, AAC audio)
 
 ### Phase 4: Video Trimming Feature (Weeks 12-14)
 **Milestone: Complete trim dialog with timeline**
+**Status: ❌ NOT STARTED** (UI built, functionality pending)
 
 #### Deliverables
-- [x] Trim dialog window
-- [x] Full video timeline with scrubber
-- [x] Draggable trim handles (start/end points)
-- [x] Frame-by-frame navigation
-- [x] Playback preview in trim mode
-- [x] Save trimmed video functionality
-- [x] Audio toggle in trim dialog
+- [x] Trim dialog window (UI only)
+- [x] Full video timeline with scrubber (UI only)
+- [x] Draggable trim handles (start/end points) (UI only)
+- [ ] Frame-by-frame navigation (not functional)
+- [ ] Playback preview in trim mode (not functional)
+- [ ] Save trimmed video functionality (not implemented)
+- [ ] Audio toggle in trim dialog (UI only)
 
 #### Tasks
 1. **Trim Dialog Architecture**
@@ -499,13 +590,14 @@ File Format:           MP4 (H.264 video, AAC audio)
 
 ### Phase 5: Polish, Optimization & Launch (Weeks 15-16)
 **Milestone: Production-ready release**
+**Status: ❌ NOT STARTED**
 
 #### Deliverables
-- [x] Performance optimization
-- [x] Bug fixes and refinements
-- [x] Code documentation
-- [x] User documentation
-- [x] Release build and notarization
+- [ ] Performance optimization
+- [ ] Bug fixes and refinements
+- [x] Code documentation (partial - in progress)
+- [ ] User documentation
+- [ ] Release build and notarization
 
 #### Tasks
 1. **Performance Optimization**

@@ -6,6 +6,7 @@ class VideoEncoder {
     // MARK: - Properties
     private var assetWriter: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
+    private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
     private var isEncoding = false
     private var frameCount: Int = 0
     private var startTime: CMTime?
@@ -65,6 +66,18 @@ class VideoEncoder {
 
         assetWriter.add(videoInput)
 
+        // Create pixel buffer adaptor for BGRA format
+        let pixelBufferAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: resolution.width,
+            kCVPixelBufferHeightKey as String: resolution.height
+        ]
+
+        pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: videoInput,
+            sourcePixelBufferAttributes: pixelBufferAttributes
+        )
+
         // Start writing session
         guard assetWriter.startWriting() else {
             if let error = assetWriter.error {
@@ -78,12 +91,14 @@ class VideoEncoder {
 
         print("✅ VideoEncoder: Started encoding to \(outputURL.lastPathComponent)")
         print("✅ Video settings: \(videoSettings)")
+        print("✅ Pixel buffer adaptor created for BGRA format")
     }
 
     func appendFrame(_ sampleBuffer: CMSampleBuffer) {
         guard isEncoding,
               let videoInput = videoInput,
-              let assetWriter = assetWriter else {
+              let assetWriter = assetWriter,
+              let adaptor = pixelBufferAdaptor else {
             return
         }
 
@@ -103,9 +118,18 @@ class VideoEncoder {
             return
         }
 
+        // Extract pixel buffer from sample buffer
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            print("⚠️ VideoEncoder: Could not get pixel buffer from sample buffer")
+            return
+        }
+
+        // Get presentation timestamp
+        let presentationTime = sampleBuffer.presentationTimeStamp
+
         // Start session when the first frame arrives to respect real timestamps
         if startTime == nil {
-            startTime = sampleBuffer.presentationTimeStamp
+            startTime = presentationTime
             if let startTime = startTime {
                 print("⏱️ VideoEncoder: Starting session at \(startTime.seconds)s")
                 assetWriter.startSession(atSourceTime: startTime)
@@ -118,7 +142,8 @@ class VideoEncoder {
             return
         }
 
-        if videoInput.append(sampleBuffer) {
+        // Append pixel buffer using adaptor
+        if adaptor.append(pixelBuffer, withPresentationTime: presentationTime) {
             frameCount += 1
 
             // Log progress

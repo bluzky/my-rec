@@ -14,7 +14,7 @@ class PreviewDialogWindowController: NSWindowController {
     private var previewDialogView: PreviewDialogView?
     private var viewModel: PreviewDialogViewModel?
 
-    convenience init(recording: MockRecording) {
+    convenience init(recording: VideoMetadata) {
         // Create the view model
         let viewModel = PreviewDialogViewModel(recording: recording)
 
@@ -26,7 +26,7 @@ class PreviewDialogWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = recording.filename
         window.setContentSize(NSSize(width: 900, height: 600))
-        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.styleMask = [NSWindow.StyleMask.titled, NSWindow.StyleMask.closable, NSWindow.StyleMask.resizable, NSWindow.StyleMask.miniaturizable]
         window.isReleasedWhenClosed = true // Release when closed
         window.center()
 
