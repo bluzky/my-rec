@@ -293,14 +293,24 @@ Planned topics:
 
 ### Day 27 Update
 **Date:** November 23, 2025
-**Status:** Not started
-**Completed:** -
-**Blockers:** -
-**Notes:** -
+**Status:** 🔄 Ready to start (plan prepared)
+**Completed:**
+- ✅ Day 27 plan reviewed and simplified based on current architecture
+- ✅ Identified that current implementation uses TWO separate audio inputs (needs fixing)
+- ✅ Created simplified mixing approach using buffer queues
+- ✅ Defined 5 focused tasks (~6 hours total)
+**Blockers:** None
+**Notes:**
+- Simplified approach: modify AudioCaptureEngine instead of creating separate AudioMixerEngine
+- Key insight: Currently system audio and mic write to same AVAssetWriterInput independently → no mixing!
+- Solution: Add buffer queues, mix PCM data before writing to single input
+- Volume controls will be simple multipliers on PCM samples
+- Sync monitoring will log drift, correction deferred to Phase 2 if needed
+- Plan includes comprehensive testing strategy with 30-min long recording test
 
 ---
 
-**Last Updated:** November 22, 2025 (Day 26 completed)
+**Last Updated:** November 23, 2025 (Day 27 preparation completed)
 **Updated By:** Development Team
 
 ---
