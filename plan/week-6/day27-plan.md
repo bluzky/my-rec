@@ -1,53 +1,110 @@
-# Day 27 - Audio Mixing & Synchronization
+# Day 27 - Audio Integration Testing & Mixing
 
-**Date:** November 23, 2025
-**Goal:** Mix system audio and microphone, ensure perfect A/V sync
-**Status:** 🔄 Ready to Start
+**Date:** November 20, 2025 (Revised)
+**Goal:** Verify each audio source works independently, then implement mixing
+**Status:** 🔄 In Progress
 
 ---
 
-## Overview
+## Overview - REVISED APPROACH
 
-Today is the final day of Week 6, where we'll complete the audio integration by implementing professional-grade audio mixing and ensuring rock-solid audio/video synchronization. This is critical for recording quality.
+Based on feedback, we're taking a more incremental approach to ensure stability:
+
+**Phase 1: Individual Source Testing (Priority)**
+First, verify that each audio source works correctly in isolation:
+1. Test system audio recording ONLY (disable microphone)
+2. Test microphone recording ONLY (disable system audio)
+3. Confirm both sources produce valid audio in final video
+
+**Phase 2: Audio Mixing (After Phase 1 confirmed working)**
+Only after confirming both sources work independently:
+1. Implement audio mixing logic (combine buffers)
+2. Add volume controls for each source
+3. Add A/V sync monitoring
 
 **Current State Analysis:**
 - ✅ Video capture working (ScreenCaptureEngine)
-- ✅ System audio capture working via ScreenCaptureKit (Day 25)
-- ✅ Microphone capture working via AVAudioEngine (Day 26)
-- ✅ Both audio sources write to separate AVAssetWriterInput instances
-- ⚠️ **ISSUE IDENTIFIED:** Currently using TWO separate audio inputs (system + mic)
-- ❌ No real-time audio mixing (both sources separate in final video)
-- ❌ A/V sync not verified for long recordings
+- ✅ System audio capture implemented via ScreenCaptureKit (Day 25)
+- ✅ Microphone capture implemented via AVAudioEngine (Day 26)
+- ⚠️ System audio recording NOT yet tested end-to-end
+- ⚠️ Microphone recording NOT yet tested end-to-end
+- ❌ No mutually exclusive toggle enforcement yet
+- ❌ No audio mixing implemented
+- ❌ A/V sync not verified
 
-**Target State:**
+**Phase 1 Target State:**
+- ✅ Users can enable system audio OR microphone (mutually exclusive)
+- ✅ System audio only recording produces valid audio output
+- ✅ Microphone only recording produces valid audio output
+- ✅ Both tested with actual playback verification
+
+**Phase 2 Target State:**
 - ✅ System audio + microphone mixed into SINGLE audio track
 - ✅ Individual volume controls for each source (0.0-1.0)
 - ✅ Real-time audio mixing before encoding
 - ✅ Audio/video sync verified (±50ms tolerance)
-- ✅ Drift monitoring and logging
-- ✅ Long recording stability (30+ min tested)
-
-**Simplified Approach:**
-Instead of the complex AudioMixerEngine architecture in the original plan, we'll:
-1. Use AudioCaptureEngine's existing buffer processing
-2. Add a simple mixing layer that combines buffers before writing
-3. Implement volume controls as multipliers on PCM data
-4. Add sync monitoring with logging (correction may not be needed initially)
-5. Test thoroughly with long recordings
 
 ---
 
-## Simplified Technical Approach
+## Phase 1: Individual Source Testing
 
-### Current Architecture Analysis
+### Implementation Tasks
 
-**AudioCaptureEngine has:**
-- `processSampleBuffer(_ sampleBuffer: CMSampleBuffer)` - for system audio
-- `processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime)` - for microphone
-- Single `assetWriterInput` shared by both sources
-- Separate level monitoring for each source
+**Task 1: Make Audio Toggles Mutually Exclusive (30 min)**
 
-**Problem:** Both sources write to the same input independently → no mixing!
+**Goal:** Ensure only ONE audio source can be enabled at a time for testing
+
+**Files to modify:**
+- `MyRec/Views/Settings/SettingsBarView.swift`
+
+**Changes:**
+1. Add `onChange` handler to system audio toggle
+2. Add `onChange` handler to microphone toggle
+3. When one is enabled, automatically disable the other
+4. Log which source is active
+
+**Task 2: Test System Audio Recording (30 min)**
+
+**Test procedure:**
+1. Enable system audio toggle ONLY
+2. Disable microphone toggle
+3. Start recording (play music/video in background)
+4. Record for 30 seconds
+5. Stop recording
+6. Open video file and verify audio is present
+7. Check audio sync with video
+
+**Success criteria:**
+- [ ] Video file contains audio track
+- [ ] Audio is audible and clear
+- [ ] Audio matches what was playing during recording
+- [ ] No crashes or errors
+
+**Task 3: Test Microphone Recording (30 min)**
+
+**Test procedure:**
+1. Disable system audio toggle
+2. Enable microphone toggle ONLY
+3. Grant microphone permission if needed
+4. Start recording (speak into microphone)
+5. Record for 30 seconds
+6. Stop recording
+7. Open video file and verify microphone audio is present
+8. Check audio quality
+
+**Success criteria:**
+- [ ] Video file contains audio track
+- [ ] Microphone audio is audible and clear
+- [ ] Voice is recognizable
+- [ ] No crashes or errors
+
+**Task 4: Debug and Fix Issues (60 min)**
+
+Based on test results from Tasks 2 & 3:
+- Fix any audio encoding issues
+- Fix any synchronization problems
+- Fix any crashes or errors
+- Verify both sources work reliably
 
 ### Solution: Add Mixing Layer
 
@@ -501,23 +558,87 @@ final class AudioMixingTests: XCTestCase {
 
 ---
 
+---
+
+## Phase 2: Audio Mixing Implementation
+
+**NOTE:** Only proceed to Phase 2 after Phase 1 tests pass!
+
+### Implementation Tasks
+
+**Task 5: Create SyncMonitor Helper (30 min)**
+- Create `MyRec/Services/SyncMonitor.swift`
+- Implement drift tracking and logging
+- Add console reporting
+
+**Task 6: Implement Audio Mixing in AudioCaptureEngine (90 min)**
+- Add buffer queues for system audio and microphone
+- Implement `mixBuffers()` method to combine PCM data
+- Add soft clipping to prevent distortion
+- Update `processSampleBuffer()` to queue when mixing mode enabled
+- Update `processMicrophoneBuffer()` to queue when mixing mode enabled
+
+**Task 7: Add Volume Controls (45 min)**
+- Add `@Published var systemVolume: Float = 1.0` to AudioCaptureEngine
+- Add `@Published var microphoneVolume: Float = 1.0` to AudioCaptureEngine
+- Add sliders to SettingsBarView
+- Connect sliders to AudioCaptureEngine properties
+
+**Task 8: Enable Both Audio Sources & Test Mixing (60 min)**
+- Remove mutually exclusive toggle logic
+- Allow both audio sources to be enabled simultaneously
+- Test mixed audio recording
+- Verify both sources audible in final video
+- Check for clipping or distortion
+
+---
+
 ## Revised Time Breakdown
 
+### Phase 1: Individual Source Testing (Current Focus)
 | Task | Estimated | Actual |
 |------|-----------|--------|
-| Add mixing to AudioCaptureEngine | 90 min | - |
+| Make toggles mutually exclusive | 30 min | - |
+| Test system audio recording | 30 min | - |
+| Test microphone recording | 30 min | - |
+| Debug and fix issues | 60 min | - |
+| **Phase 1 Total** | **2.5 hours** | - |
+
+### Phase 2: Audio Mixing (After Phase 1)
+| Task | Estimated | Actual |
+|------|-----------|--------|
 | Create SyncMonitor | 30 min | - |
-| Add volume control UI | 45 min | - |
+| Implement audio mixing logic | 90 min | - |
+| Add volume controls | 45 min | - |
+| Test mixing & verify quality | 60 min | - |
 | Write unit tests | 45 min | - |
-| Integration & long test | 120 min | - |
-| Documentation & wrap-up | 30 min | - |
-| **Total** | **~6 hours** | - |
+| **Phase 2 Total** | **~4.5 hours** | - |
+
+**Total Estimated:** ~7 hours (split across 2 sessions if needed)
 
 ---
 
 ## Success Criteria
 
-At end of Day 27, you should have:
+### Phase 1 Success Criteria (Must complete first)
+
+**Functional:**
+- [ ] Only one audio source can be enabled at a time (mutually exclusive toggles)
+- [ ] System audio only recording works and produces audible output
+- [ ] Microphone only recording works and produces audible output
+- [ ] No crashes during recording or playback
+
+**Quality:**
+- [ ] Audio is clearly audible in both test cases
+- [ ] Audio sync is acceptable (rough check, no precise measurement yet)
+- [ ] No build errors or warnings
+
+**Testing:**
+- [ ] System audio test recorded and played back successfully
+- [ ] Microphone test recorded and played back successfully
+- [ ] Build passes: `swift test` runs without errors
+
+### Phase 2 Success Criteria (After Phase 1 passes)
 
 **Functional:**
 - [ ] System audio + microphone mixed into single track
@@ -527,15 +648,14 @@ At end of Day 27, you should have:
 
 **Quality:**
 - [ ] A/V sync within ±50ms throughout recording
-- [ ] Max drift < 50ms in 30-minute test
+- [ ] Max drift logged and monitored
 - [ ] No memory leaks or crashes
 - [ ] Zero build errors/warnings
 
 **Testing:**
 - [ ] Unit tests pass (swift test)
-- [ ] Manual tests pass (all scenarios above)
-- [ ] Long recording test complete (30+ min)
-- [ ] Sync verified with external timer
+- [ ] Manual mixing tests pass
+- [ ] Both sources audible and balanced in mixed recording
 
 ---
 
@@ -575,25 +695,43 @@ At end of Day 27, you should have:
 
 ## Results (End of Day)
 
-**Status:** Not started
+**Status:** In Progress - Phase 1
+
+### Phase 1 Results
+
+**Completed:**
+- [ ] Mutually exclusive toggles implemented
+- [ ] System audio test completed
+- [ ] Microphone test completed
+- [ ] Both tests verified with playback
+
+**Phase 1 Metrics:**
+- Build status: -
+- System audio quality: -
+- Microphone audio quality: -
+- Issues found: -
+
+### Phase 2 Results (If time permits)
 
 **Completed:**
 - [ ] Audio mixing implemented
 - [ ] Volume controls functional
+- [ ] Mixed recording tested
 - [ ] Unit tests passing
-- [ ] Short sync test passed
-- [ ] Long test initiated (can complete overnight)
 
-**Metrics:**
+**Phase 2 Metrics:**
 - Build status: -
 - Test pass rate: -
 - Max observed drift: -
-- Memory usage: -
+- Mix quality: -
 
 **Blockers encountered:** -
 
-**Next steps (Week 7):** -
+**Next steps:**
+- If Phase 1 complete: Proceed to Phase 2
+- If Phase 2 complete: Move to Week 7 tasks
+- If blockers found: Debug and resolve before proceeding
 
 ---
 
-**Last Updated:** November 23, 2025 (Day 27 preparation complete)
+**Last Updated:** November 20, 2025 (Day 27 plan revised - incremental approach)
