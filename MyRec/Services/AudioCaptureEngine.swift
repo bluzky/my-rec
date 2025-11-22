@@ -70,23 +70,26 @@ public class AudioCaptureEngine: NSObject, ObservableObject {
         }
     }
 
-    /// Processes an audio sample buffer
+    /// Processes an audio sample buffer (system audio from ScreenCaptureKit)
     /// - Parameter sampleBuffer: The audio sample buffer to process
     func processSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
-        guard let input = assetWriterInput,
-              input.isReadyForMoreMediaData else {
-            return
-        }
-
         // Calculate audio level for monitoring
         updateAudioLevel(from: sampleBuffer)
 
-        // Write to asset writer on background queue
-        let bufferCopy = sampleBuffer
-        audioQueue.async { [weak input] in
-            guard let input = input else { return }
-            input.append(bufferCopy)
-        }
+        // Note: For Phase 1, we don't write to asset writer here
+        // System audio is written directly by VideoEncoder
+        // This method is only for level monitoring
+    }
+
+    /// Processes a microphone sample buffer (from ScreenCaptureKit)
+    /// - Parameter sampleBuffer: The microphone sample buffer to process
+    func processMicrophoneBuffer(_ sampleBuffer: CMSampleBuffer) {
+        // Calculate microphone level for monitoring
+        updateMicrophoneLevel(from: sampleBuffer)
+
+        // Note: For Phase 1, we don't write to asset writer here
+        // Microphone audio is written directly by VideoEncoder
+        // This method is only for level monitoring
     }
 
     /// Starts audio capture
@@ -247,7 +250,7 @@ public class AudioCaptureEngine: NSObject, ObservableObject {
         }
     }
 
-    /// Updates microphone level from audio buffer
+    /// Updates microphone level from audio buffer (AVAudioPCMBuffer)
     private func updateMicrophoneLevel(from buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.floatChannelData else {
             print("⚠️ No channel data in buffer")
@@ -287,6 +290,52 @@ public class AudioCaptureEngine: NSObject, ObservableObject {
             if Int.random(in: 0...50) == 0 {
                 print("🎤 Mic level: \(String(format: "%.2f", scaledLevel)) (RMS: \(String(format: "%.4f", rms)))")
             }
+        }
+    }
+
+    /// Updates microphone level from CMSampleBuffer (ScreenCaptureKit)
+    private func updateMicrophoneLevel(from sampleBuffer: CMSampleBuffer) {
+        guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
+            return
+        }
+
+        var length = 0
+        var dataPointer: UnsafeMutablePointer<Int8>?
+
+        let status = CMBlockBufferGetDataPointer(
+            blockBuffer,
+            atOffset: 0,
+            lengthAtOffsetOut: &length,
+            totalLengthOut: nil,
+            dataPointerOut: &dataPointer
+        )
+
+        guard status == kCMBlockBufferNoErr,
+              let data = dataPointer,
+              length > 0 else {
+            return
+        }
+
+        // Calculate RMS (Root Mean Square) for audio level
+        // Assuming Float32 PCM format from ScreenCaptureKit
+        let samples = UnsafeRawPointer(data).assumingMemoryBound(to: Float.self)
+        let count = length / MemoryLayout<Float>.size
+
+        guard count > 0 else { return }
+
+        var sum: Float = 0
+        for i in 0..<count {
+            let sample = samples[i]
+            sum += sample * sample
+        }
+
+        let rms = sqrt(sum / Float(count))
+
+        // Update on main thread for UI binding
+        DispatchQueue.main.async { [weak self] in
+            // Scale RMS to 0-1 range
+            let scaledLevel = min(rms * 10.0, 1.0)
+            self?.microphoneLevel = scaledLevel
         }
     }
 

@@ -1,10 +1,11 @@
 import ScreenCaptureKit
 import AVFoundation
 import CoreMedia
+import Combine
 
 /// Handles screen capture using ScreenCaptureKit (macOS 13+)
 @available(macOS 12.3, *)
-class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
+public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, ObservableObject {
     // MARK: - Properties
     private var stream: SCStream?
     private var captureRegion: CGRect = .zero
@@ -16,9 +17,13 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     private var videoEncoder: VideoEncoder?
     private var tempURL: URL?
 
-    // Audio capture
-    private var audioCaptureEngine: AudioCaptureEngine?
+    // Audio settings
     private var captureAudio: Bool = false
+    private var captureMicrophone: Bool = false
+
+    // Audio level monitoring
+    @Published var audioLevel: Float = 0.0
+    @Published var microphoneLevel: Float = 0.0
 
     // MARK: - Callbacks
     var onFrameCaptured: ((Int, CMTime) -> Void)?
@@ -32,13 +37,15 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     ///   - resolution: The output resolution
     ///   - frameRate: The capture frame rate
     ///   - withAudio: Whether to capture system audio (default: true)
-    func startCapture(region: CGRect, resolution: Resolution, frameRate: FrameRate, withAudio: Bool = true) async throws {
+    ///   - withMicrophone: Whether to capture microphone (default: false)
+    public func startCapture(region: CGRect, resolution: Resolution, frameRate: FrameRate, withAudio: Bool = true, withMicrophone: Bool = false) async throws {
         guard !isCapturing else { return }
 
         self.captureRegion = region
         self.frameCount = 0
         self.startTime = nil
         self.captureAudio = withAudio
+        self.captureMicrophone = withMicrophone
 
         // ADD: Create temp file URL
         tempURL = FileManager.default.temporaryDirectory
@@ -63,16 +70,10 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
             print("❌ Encoding error: \(error)")
         }
 
-        try videoEncoder?.startEncoding(withAudio: captureAudio)
+        try videoEncoder?.startEncoding(withAudio: captureAudio || captureMicrophone)
         print("✅ Encoder started - Output: \(tempURL.lastPathComponent)")
-        print("🎵 Audio capture enabled: \(captureAudio)")
-
-        // Initialize audio capture engine if needed
-        if captureAudio {
-            audioCaptureEngine = AudioCaptureEngine()
-            audioCaptureEngine?.startCapturing()
-            print("✅ AudioCaptureEngine initialized and started")
-        }
+        print("🎵 System audio enabled: \(captureAudio)")
+        print("🎤 Microphone enabled: \(captureMicrophone)")
 
         // Setup stream (permission already checked in AppDelegate)
         try await setupStream(resolution: resolution, frameRate: frameRate)
@@ -82,7 +83,7 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     }
 
     /// Stop capturing the screen
-    func stopCapture() async throws -> URL {
+    public func stopCapture() async throws -> URL {
         guard isCapturing else {
             print("⚠️ ScreenCaptureEngine: Not currently capturing")
             throw CaptureError.notCapturing
@@ -134,14 +135,32 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
 
     // MARK: - SCStreamOutput
 
-    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
-        if #available(macOS 13.0, *) {
+    public func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+        if #available(macOS 15.0, *) {
             switch type {
             case .screen:
                 handleVideoSampleBuffer(sampleBuffer)
 
             case .audio:
                 handleAudioSampleBuffer(sampleBuffer)
+
+            case .microphone:
+                handleMicrophoneSampleBuffer(sampleBuffer)
+
+            @unknown default:
+                break
+            }
+        } else if #available(macOS 13.0, *) {
+            switch type {
+            case .screen:
+                handleVideoSampleBuffer(sampleBuffer)
+
+            case .audio:
+                handleAudioSampleBuffer(sampleBuffer)
+
+            case .microphone:
+                // Microphone not available on macOS 13-14
+                break
 
             @unknown default:
                 break
@@ -183,11 +202,110 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
     private func handleAudioSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         // Send audio to video encoder
         videoEncoder?.appendAudio(sampleBuffer)
+
+        // Update audio level for UI
+        updateAudioLevel(from: sampleBuffer)
+    }
+
+    private func handleMicrophoneSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
+        // Send microphone audio to video encoder for recording
+        videoEncoder?.appendAudio(sampleBuffer)
+
+        // Update microphone level for UI
+        updateMicrophoneLevel(from: sampleBuffer)
+    }
+
+    // MARK: - Audio Level Calculation
+
+    private func updateAudioLevel(from sampleBuffer: CMSampleBuffer) {
+        guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
+            return
+        }
+
+        var length = 0
+        var dataPointer: UnsafeMutablePointer<Int8>?
+
+        let status = CMBlockBufferGetDataPointer(
+            blockBuffer,
+            atOffset: 0,
+            lengthAtOffsetOut: &length,
+            totalLengthOut: nil,
+            dataPointerOut: &dataPointer
+        )
+
+        guard status == kCMBlockBufferNoErr,
+              let data = dataPointer,
+              length > 0 else {
+            return
+        }
+
+        // Calculate RMS assuming Float32 PCM format from ScreenCaptureKit
+        let samples = UnsafeRawPointer(data).assumingMemoryBound(to: Float.self)
+        let count = length / MemoryLayout<Float>.size
+
+        guard count > 0 else { return }
+
+        var sum: Float = 0
+        for i in 0..<count {
+            let sample = samples[i]
+            sum += sample * sample
+        }
+
+        let rms = sqrt(sum / Float(count))
+
+        // Update on main thread for UI binding
+        DispatchQueue.main.async { [weak self] in
+            self?.audioLevel = min(rms, 1.0)
+        }
+    }
+
+    private func updateMicrophoneLevel(from sampleBuffer: CMSampleBuffer) {
+        guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else {
+            return
+        }
+
+        var length = 0
+        var dataPointer: UnsafeMutablePointer<Int8>?
+
+        let status = CMBlockBufferGetDataPointer(
+            blockBuffer,
+            atOffset: 0,
+            lengthAtOffsetOut: &length,
+            totalLengthOut: nil,
+            dataPointerOut: &dataPointer
+        )
+
+        guard status == kCMBlockBufferNoErr,
+              let data = dataPointer,
+              length > 0 else {
+            return
+        }
+
+        // Calculate RMS assuming Float32 PCM format from ScreenCaptureKit
+        let samples = UnsafeRawPointer(data).assumingMemoryBound(to: Float.self)
+        let count = length / MemoryLayout<Float>.size
+
+        guard count > 0 else { return }
+
+        var sum: Float = 0
+        for i in 0..<count {
+            let sample = samples[i]
+            sum += sample * sample
+        }
+
+        let rms = sqrt(sum / Float(count))
+
+        // Update on main thread for UI binding
+        DispatchQueue.main.async { [weak self] in
+            // Scale RMS to 0-1 range
+            let scaledLevel = min(rms * 10.0, 1.0)
+            self?.microphoneLevel = scaledLevel
+        }
     }
 
     // MARK: - SCStreamDelegate
 
-    func stream(_ stream: SCStream, didStopWithError error: Error) {
+    public func stream(_ stream: SCStream, didStopWithError error: Error) {
         print("❌ ScreenCaptureEngine: Stream stopped with error: \(error)")
         onError?(error)
     }
@@ -298,6 +416,16 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
             }
         }
 
+        // Configure microphone capture (macOS 15+)
+        if captureMicrophone {
+            if #available(macOS 15.0, *) {
+                config.captureMicrophone = true
+                print("🎤 Microphone capture enabled via ScreenCaptureKit")
+            } else {
+                print("⚠️ Microphone capture via ScreenCaptureKit requires macOS 15.0 or later")
+            }
+        }
+
         // Create stream
         stream = SCStream(filter: filter, configuration: config, delegate: self)
 
@@ -308,6 +436,14 @@ class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput {
         if captureAudio {
             if #available(macOS 13.0, *) {
                 try stream?.addStreamOutput(self, type: .audio, sampleHandlerQueue: .global())
+            }
+        }
+
+        // Add stream output for microphone if enabled (macOS 15+)
+        if captureMicrophone {
+            if #available(macOS 15.0, *) {
+                try stream?.addStreamOutput(self, type: .microphone, sampleHandlerQueue: .global())
+                print("🎤 Microphone stream output registered")
             }
         }
 

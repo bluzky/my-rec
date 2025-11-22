@@ -1,6 +1,6 @@
 import Foundation
 
-enum FrameRate: Int, Codable, CaseIterable {
+public enum FrameRate: Int, Codable, CaseIterable {
     case fps15 = 15
     case fps24 = 24
     case fps30 = 30

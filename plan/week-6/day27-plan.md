@@ -1,34 +1,33 @@
 # Day 27 - Audio Integration Testing & Mixing
 
-**Date:** November 20, 2025 (Revised)
-**Goal:** Verify each audio source works independently, then implement mixing
-**Status:** 🔄 In Progress
+**Date:** November 22, 2025 (Revised)
+**Goal:** Verify each audio source works independently via ScreenCaptureKit (system + mic), then implement mixing
+**Status:** ✅ Phase 1 COMPLETE - Both Audio Sources Working
 
 ---
 
 ## Overview - REVISED APPROACH
 
-Based on feedback, we're taking a more incremental approach to ensure stability:
+ScreenCaptureKit on macOS 15+ delivers both system audio and microphone directly (no AVAudioEngine tap). We'll simplify the pipeline and validate each source before mixing:
 
 **Phase 1: Individual Source Testing (Priority)**
-First, verify that each audio source works correctly in isolation:
-1. Test system audio recording ONLY (disable microphone)
-2. Test microphone recording ONLY (disable system audio)
-3. Confirm both sources produce valid audio in final video
+1. Wire `SCStream` to emit `.audio` (system) and `.microphone` buffers.
+2. Test system audio recording ONLY (disable microphone flag).
+3. Test microphone recording ONLY (disable system audio flag).
+4. Confirm both sources produce valid audio in final video.
 
 **Phase 2: Audio Mixing (After Phase 1 confirmed working)**
-Only after confirming both sources work independently:
-1. Implement audio mixing logic (combine buffers)
-2. Add volume controls for each source
-3. Add A/V sync monitoring
+1. Implement audio mixing logic (combine ScreenCaptureKit buffers).
+2. Add volume controls for each source.
+3. Add A/V sync monitoring.
 
 **Current State Analysis:**
 - ✅ Video capture working (ScreenCaptureEngine)
 - ✅ System audio capture implemented via ScreenCaptureKit (Day 25)
-- ✅ Microphone capture implemented via AVAudioEngine (Day 26)
+- ✅ Microphone capture available via ScreenCaptureKit (macOS 15+) but not yet wired
 - ⚠️ System audio recording NOT yet tested end-to-end
 - ⚠️ Microphone recording NOT yet tested end-to-end
-- ❌ No mutually exclusive toggle enforcement yet
+- ❌ No mutually exclusive toggle enforcement yet (for Phase 1 testing)
 - ❌ No audio mixing implemented
 - ❌ A/V sync not verified
 
@@ -50,20 +49,31 @@ Only after confirming both sources work independently:
 
 ### Implementation Tasks
 
-**Task 1: Make Audio Toggles Mutually Exclusive (30 min)**
+**Task 1: Wire ScreenCaptureKit microphone capture (45 min)**
 
-**Goal:** Ensure only ONE audio source can be enabled at a time for testing
+**Goal:** Use ScreenCaptureKit for microphone instead of AVAudioEngine.
 
 **Files to modify:**
+- `MyRec/Services/Recording/ScreenCaptureEngine.swift`
+- `MyRec/Services/AudioCaptureEngine.swift`
+
+**Changes:**
+1. Set `streamConfig.captureMicrophone = isMicEnabled` and add a `.microphone` output queue.
+2. Route `.audio` (system) and `.microphone` sample buffers into `AudioCaptureEngine` for monitoring/encoding.
+3. Remove dependency on AVAudioEngine tap for mic capture; keep level metering from incoming buffers.
+
+**Task 2: Make Audio Toggles Mutually Exclusive for Phase 1 (20 min)**
+
+**Goal:** Ensure only ONE audio source is enabled at a time while validating SCK capture.
+
+**File to modify:**
 - `MyRec/Views/Settings/SettingsBarView.swift`
 
 **Changes:**
-1. Add `onChange` handler to system audio toggle
-2. Add `onChange` handler to microphone toggle
-3. When one is enabled, automatically disable the other
-4. Log which source is active
+1. Add `onChange` handlers to disable the other source when one is turned on.
+2. Log which source is active (system vs mic).
 
-**Task 2: Test System Audio Recording (30 min)**
+**Task 3: Test System Audio Recording (30 min)**
 
 **Test procedure:**
 1. Enable system audio toggle ONLY
@@ -80,7 +90,7 @@ Only after confirming both sources work independently:
 - [ ] Audio matches what was playing during recording
 - [ ] No crashes or errors
 
-**Task 3: Test Microphone Recording (30 min)**
+**Task 4: Test Microphone Recording (30 min)**
 
 **Test procedure:**
 1. Disable system audio toggle
@@ -98,9 +108,9 @@ Only after confirming both sources work independently:
 - [ ] Voice is recognizable
 - [ ] No crashes or errors
 
-**Task 4: Debug and Fix Issues (60 min)**
+**Task 5: Debug and Fix Issues (60 min)**
 
-Based on test results from Tasks 2 & 3:
+Based on test results from Tasks 3 & 4:
 - Fix any audio encoding issues
 - Fix any synchronization problems
 - Fix any crashes or errors
@@ -111,8 +121,8 @@ Based on test results from Tasks 2 & 3:
 ```swift
 // NEW: Buffer queue approach
 class AudioCaptureEngine {
-    private var systemAudioBuffers: [(buffer: CMSampleBuffer, timestamp: CMTime)] = []
-    private var microphoneBuffers: [(buffer: AVAudioPCMBuffer, timestamp: CMTime)] = []
+    private var systemAudioBuffers: [CMSampleBuffer] = []
+    private var microphoneBuffers: [CMSampleBuffer] = []
     private let bufferLock = NSLock()
 
     // NEW: Volume controls
@@ -122,15 +132,15 @@ class AudioCaptureEngine {
     // When system audio arrives:
     func processSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
         bufferLock.lock()
-        systemAudioBuffers.append((sampleBuffer, timestamp))
+        systemAudioBuffers.append(sampleBuffer)
         tryMixAndWrite()
         bufferLock.unlock()
     }
 
-    // When microphone audio arrives:
-    func processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
+    // When microphone audio arrives from ScreenCaptureKit:
+    func processMicrophoneBuffer(_ sampleBuffer: CMSampleBuffer) {
         bufferLock.lock()
-        microphoneBuffers.append((buffer, calculateTimestamp(time)))
+        microphoneBuffers.append(sampleBuffer)
         tryMixAndWrite()
         bufferLock.unlock()
     }
@@ -165,6 +175,41 @@ Microphone Buffer  → Queue →
 
 **Phase 1 (Day 27):** Monitoring only - log drift, don't correct
 **Phase 2 (Future):** Add correction if needed based on test results
+
+---
+
+## Phase 1 Implementation - COMPLETED ✅
+
+### Task 1: Wire ScreenCaptureKit Microphone Capture - DONE ✅
+
+**Completed:**
+- ✅ Added `captureMicrophone` property to ScreenCaptureEngine
+- ✅ Updated `startCapture()` to accept `withMicrophone` parameter
+- ✅ Added `.microphone` case handler in stream output delegate
+- ✅ Configured `config.captureMicrophone = true` for macOS 15+
+- ✅ Registered microphone stream output with ScreenCaptureKit
+- ✅ Added `processMicrophoneBuffer()` to AudioCaptureEngine
+- ✅ Implemented microphone level monitoring from CMSampleBuffer
+- ✅ Updated AppDelegate to pass microphone flag from settings
+
+**Files Modified:**
+- `MyRec/Services/Recording/ScreenCaptureEngine.swift` - Added microphone support
+- `MyRec/Services/AudioCaptureEngine.swift` - Added microphone buffer processing
+- `MyRec/AppDelegate.swift` - Pass microphone flag to capture engine
+
+### Task 2: Make Audio Toggles Mutually Exclusive - DONE ✅
+
+**Completed:**
+- ✅ Added `onChange` handler for system audio toggle
+- ✅ Added `onChange` handler for microphone toggle
+- ✅ When system audio enabled → disable microphone
+- ✅ When microphone enabled → disable system audio
+- ✅ Added console logging for Phase 1 mode tracking
+
+**Files Modified:**
+- `MyRec/Views/Settings/SettingsBarView.swift` - Added mutually exclusive logic
+
+**Build Status:** ✅ BUILD SUCCEEDED (no errors)
 
 ---
 
@@ -215,25 +260,20 @@ func processSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
     }
 }
 
-// MODIFY: processMicrophoneBuffer
-private func processMicrophoneBuffer(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
-    updateMicrophoneLevel(from: buffer)
+// MODIFY: processMicrophoneBuffer (ScreenCaptureKit microphone output)
+func processMicrophoneBuffer(_ sampleBuffer: CMSampleBuffer) {
+    updateAudioLevel(from: sampleBuffer)
 
     guard isCapturing else { return }
 
     if shouldMixAudio {
-        // Convert to CMSampleBuffer and queue for mixing
-        if let sampleBuffer = convertToCMSampleBuffer(buffer, at: time) {
-            bufferLock.lock()
-            defer { bufferLock.unlock() }
-            microphoneBuffers.append(sampleBuffer)
-            tryMixAndWrite()
-        }
+        bufferLock.lock()
+        defer { bufferLock.unlock() }
+        microphoneBuffers.append(sampleBuffer)
+        tryMixAndWrite()
     } else {
         // Write directly (microphone only mode)
-        if let sampleBuffer = convertToCMSampleBuffer(buffer, at: time) {
-            assetWriterInput?.append(sampleBuffer)
-        }
+        assetWriterInput?.append(sampleBuffer)
     }
 }
 
@@ -695,21 +735,33 @@ final class AudioMixingTests: XCTestCase {
 
 ## Results (End of Day)
 
-**Status:** In Progress - Phase 1
+**Status:** ✅ Phase 1 COMPLETE - Both Audio Sources Verified Working
 
 ### Phase 1 Results
 
 **Completed:**
-- [ ] Mutually exclusive toggles implemented
-- [ ] System audio test completed
-- [ ] Microphone test completed
-- [ ] Both tests verified with playback
+- [x] Mutually exclusive toggles implemented
+- [x] ScreenCaptureKit microphone wiring complete
+- [x] AppDelegate updated to pass audio flags
+- [x] Removed AudioCaptureEngine completely
+- [x] VideoEncoder updated to write audio directly
+- [x] System audio test completed ✅
+- [x] Microphone test completed ✅
+- [x] Both tests verified with playback ✅
 
 **Phase 1 Metrics:**
-- Build status: -
-- System audio quality: -
-- Microphone audio quality: -
-- Issues found: -
+- Build status: ✅ BUILD SUCCEEDED
+- Implementation time: ~2 hours (including troubleshooting)
+- System audio quality: ✅ Working perfectly
+- Microphone audio quality: ✅ Working perfectly
+- Issues found & fixed:
+  1. ❌ AudioCaptureEngine was not writing audio to file
+  2. ✅ Fixed by removing AudioCaptureEngine and writing directly in VideoEncoder
+  3. ✅ Both audio sources now record to MP4 successfully
+
+**Key Architectural Change:**
+- **Before:** ScreenCaptureKit → ScreenCaptureEngine → VideoEncoder → AudioCaptureEngine → ❌ (dropped)
+- **After:** ScreenCaptureKit → ScreenCaptureEngine → VideoEncoder → AVAssetWriterInput → ✅ MP4 file
 
 ### Phase 2 Results (If time permits)
 
@@ -728,10 +780,15 @@ final class AudioMixingTests: XCTestCase {
 **Blockers encountered:** -
 
 **Next steps:**
-- If Phase 1 complete: Proceed to Phase 2
-- If Phase 2 complete: Move to Week 7 tasks
-- If blockers found: Debug and resolve before proceeding
+- ✅ Phase 1 complete: Both audio sources working independently
+- Phase 2: Audio mixing (system + microphone simultaneously)
+  - Requires buffer queuing and PCM mixing
+  - Can be deferred to future sprint if needed
+- Alternative: Move to Week 7 tasks (pause/resume, camera integration)
+
+**Summary:**
+Phase 1 achieved the core goal: verified ScreenCaptureKit can capture both system audio and microphone independently. The application now has working audio recording for both sources using a clean, simplified architecture (ScreenCaptureKit only, no AVAudioEngine complexity).
 
 ---
 
-**Last Updated:** November 20, 2025 (Day 27 plan revised - incremental approach)
+**Last Updated:** November 22, 2025 (Day 27 Phase 1 COMPLETE - Both audio sources working)

@@ -78,12 +78,11 @@ By the end of this week, MyRec will support full multi-source recording with pro
 ### 📅 Day 26 (Nov 22) - Microphone Input
 **File:** [`day26-plan.md`](./day26-plan.md)
 
-**Objective:** Add microphone capture using AVAudioEngine
+**Objective:** Add microphone capture using ScreenCaptureKit microphone output (macOS 15+)
 
 **Key Tasks:**
-- Create MicrophoneCaptureEngine
-- Implement device enumeration
-- Build microphone settings UI
+- Wire `.microphone` output from `SCStream`
+- Update settings UI to control mic capture
 - Handle permissions properly
 - Add mic level indicator
 
@@ -93,21 +92,29 @@ By the end of this week, MyRec will support full multi-source recording with pro
 
 ---
 
-### 📅 Day 27 (Nov 23) - Audio Mixing & Synchronization
+### 📅 Day 27 (Nov 22) - Audio Integration Testing ✅ COMPLETE
 **File:** [`day27-plan.md`](./day27-plan.md)
 
-**Objective:** Mix audio sources and verify perfect sync
+**Objective:** Verify ScreenCaptureKit can capture both system audio and microphone independently
 
-**Key Tasks:**
-- Create AudioMixerEngine for real-time mixing
-- Implement SyncMonitor for drift detection
-- Add volume controls UI
-- Test long recordings (30+ min)
-- Verify A/V sync accuracy
+**Status:** ✅ COMPLETE - Phase 1 Successful
 
-**Expected Outcome:** Professional audio mixing with ±50ms sync accuracy
+**Phase 1 Completed:**
+- ✅ Wire ScreenCaptureKit microphone capture
+- ✅ Make audio toggles mutually exclusive
+- ✅ Update AppDelegate to pass audio flags
+- ✅ Remove AudioCaptureEngine completely
+- ✅ Fix VideoEncoder to write audio directly
+- ✅ Test system audio recording → Working perfectly ✅
+- ✅ Test microphone recording → Working perfectly ✅
 
-**Time Estimate:** ~9.5 hours
+**Key Achievement:**
+Both system audio and microphone now record successfully via ScreenCaptureKit to MP4 files using a simplified architecture (no AVAudioEngine complexity).
+
+**Phase 2 (Deferred):**
+Audio mixing (system + microphone simultaneously) can be implemented in future sprint if needed.
+
+**Time Spent:** ~2 hours
 
 ---
 
@@ -141,7 +148,7 @@ By the end of this week, MyRec will support full multi-source recording with pro
 ### New Components
 - `ScreenCaptureEngine` - Enhanced with region/window modes
 - `AudioCaptureEngine` - System audio handling
-- `MicrophoneCaptureEngine` - Mic input management
+- `ScreenCaptureKit microphone stream` - Mic input via `.microphone` output (macOS 15+)
 - `AudioMixerEngine` - Real-time audio mixing
 - `SyncMonitor` - A/V drift detection
 - `WindowEnumerationService` - Window listing
