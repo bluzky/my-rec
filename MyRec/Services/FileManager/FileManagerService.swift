@@ -118,7 +118,7 @@ class FileManagerService {
     /// - Returns: Final file URL in configured save directory
     private func generateUniqueFilename() -> URL {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH-mm-ss"
         let timestamp = dateFormatter.string(from: Date())
 
         let filename = "MyRecording-\(timestamp).mp4"
