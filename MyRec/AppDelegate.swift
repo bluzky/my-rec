@@ -342,6 +342,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("  Size: \(metadata.formattedFileSize)")
                 print("  Resolution: \(metadata.displayResolution)")
 
+                // Notify that a new recording has been saved
+                NotificationCenter.default.post(
+                    name: .recordingSaved,
+                    object: nil,
+                    userInfo: ["metadata": metadata]
+                )
+
                 // Clean up temp file
                 FileManagerService.shared.cleanupTempFile(tempVideoURL)
 

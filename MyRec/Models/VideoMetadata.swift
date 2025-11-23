@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 /// Metadata for a recorded video file
 struct VideoMetadata: Identifiable, Equatable {
@@ -12,6 +13,9 @@ struct VideoMetadata: Identifiable, Equatable {
     let frameRate: FrameRate
     let fileSize: Int64
     let createdDate: Date
+    let thumbnail: NSImage?
+    /// Actual pixel size extracted from the video track (not rounded to presets)
+    let naturalSize: CGSize
 
     // MARK: - Computed Properties
 
@@ -81,6 +85,14 @@ struct VideoMetadata: Identifiable, Equatable {
         }
     }
 
+    /// Aspect ratio derived from the video's natural size (fallbacks to nominal resolution)
+    var aspectRatio: CGFloat {
+        guard naturalSize.height > 0 else {
+            return CGFloat(resolution.width) / CGFloat(resolution.height)
+        }
+        return naturalSize.width / naturalSize.height
+    }
+
     // MARK: - Initialization
 
     init(
@@ -90,7 +102,9 @@ struct VideoMetadata: Identifiable, Equatable {
         resolution: Resolution,
         frameRate: FrameRate,
         fileSize: Int64,
-        createdDate: Date
+        createdDate: Date,
+        thumbnail: NSImage? = nil,
+        naturalSize: CGSize? = nil
     ) {
         self.filename = filename
         self.fileURL = fileURL
@@ -99,6 +113,9 @@ struct VideoMetadata: Identifiable, Equatable {
         self.frameRate = frameRate
         self.fileSize = fileSize
         self.createdDate = createdDate
+        self.thumbnail = thumbnail
+        // Use real track size when available; otherwise fallback to nominal resolution
+        self.naturalSize = naturalSize ?? CGSize(width: resolution.width, height: resolution.height)
     }
 
     // MARK: - Equatable
@@ -128,7 +145,8 @@ struct VideoMetadata: Identifiable, Equatable {
             resolution: resolution,
             frameRate: frameRate,
             fileSize: fileSize,
-            createdDate: createdDate
+            createdDate: createdDate,
+            thumbnail: nil
         )
     }
 

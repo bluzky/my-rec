@@ -21,14 +21,33 @@ class HomePageViewModel: ObservableObject {
     // MARK: - Private Properties
 
     private let settingsManager = SettingsManager.shared
+    private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
     init() {
         loadRecentRecordings()
+        setupNotificationObservers()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Data Management
+
+    /// Setup notification observers for recording events
+    private func setupNotificationObservers() {
+        // Listen for new recordings being saved
+        NotificationCenter.default.publisher(for: .recordingSaved)
+            .sink { [weak self] notification in
+                Task { @MainActor in
+                    print("🏠 HomePageViewModel: New recording saved, refreshing list...")
+                    self?.refresh()
+                }
+            }
+            .store(in: &cancellables)
+    }
 
     /// Load all recordings from disk
     private func loadRecentRecordings() {
@@ -74,6 +93,13 @@ class HomePageViewModel: ObservableObject {
     func openSettings() {
         print("⚙️ Settings clicked from home page")
         NotificationCenter.default.post(name: .openSettings, object: nil)
+    }
+
+    /// Open recording directory in Finder
+    func openRecordingDirectory() {
+        let savePath = settingsManager.savePath
+        print("📁 Opening recording directory: \(savePath.path)")
+        NSWorkspace.shared.open(savePath)
     }
 
     /// Play a recording

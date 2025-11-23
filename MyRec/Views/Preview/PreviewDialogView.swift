@@ -89,7 +89,6 @@ struct PreviewDialogView: View {
 
 private extension PreviewDialogView {
     var videoAspectRatio: CGFloat {
-        let resolution = viewModel.recording.resolution
-        return CGFloat(resolution.width) / CGFloat(resolution.height)
+        viewModel.recording.aspectRatio
     }
 }
