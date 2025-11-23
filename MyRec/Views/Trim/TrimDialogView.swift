@@ -454,7 +454,3 @@ struct CompactToolbarButtonStyle: ButtonStyle {
 }
 
 // MARK: - Preview
-
-#Preview {
-    TrimDialogView(viewModel: TrimDialogViewModel(recording: .sample))
-}

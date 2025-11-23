@@ -185,16 +185,6 @@ struct SettingsBarView: View {
                     onIcon: "speaker.wave.2.fill",
                     offIcon: "speaker.slash.fill"
                 )
-                .onChange(of: settingsManager.defaultSettings.audioEnabled) { isEnabled in
-                    // Phase 1: Make audio toggles mutually exclusive
-                    if isEnabled && settingsManager.defaultSettings.microphoneEnabled {
-                        settingsManager.defaultSettings.microphoneEnabled = false
-                        print("🔄 Phase 1: Disabled microphone (system audio enabled)")
-                    }
-                    if isEnabled {
-                        print("✅ Phase 1: System audio ONLY mode")
-                    }
-                }
 
                 // Microphone toggle
                 ToggleIconButton(
@@ -205,29 +195,22 @@ struct SettingsBarView: View {
                     onIcon: "mic.fill",
                     offIcon: "mic.slash.fill"
                 )
-            }
-            .padding(.horizontal, 8)
-            .onChange(of: settingsManager.defaultSettings.microphoneEnabled) { isEnabled in
-                // Phase 1: Make audio toggles mutually exclusive
-                if isEnabled && settingsManager.defaultSettings.audioEnabled {
-                    settingsManager.defaultSettings.audioEnabled = false
-                    print("🔄 Phase 1: Disabled system audio (microphone enabled)")
-                }
-
-                if isEnabled {
-                    print("✅ Phase 1: Microphone ONLY mode")
-                    // Check microphone permission
-                    Task {
-                        let granted = await checkMicrophonePermission()
-                        if !granted {
-                            // Reset toggle if permission denied
-                            await MainActor.run {
-                                settingsManager.defaultSettings.microphoneEnabled = false
+                .onChange(of: settingsManager.defaultSettings.microphoneEnabled) { isEnabled in
+                    if isEnabled {
+                        // Phase 2: Check microphone permission when enabled
+                        Task {
+                            let granted = await checkMicrophonePermission()
+                            if !granted {
+                                // Reset toggle if permission denied
+                                await MainActor.run {
+                                    settingsManager.defaultSettings.microphoneEnabled = false
+                                }
                             }
                         }
                     }
                 }
             }
+            .padding(.horizontal, 8)
 
             Divider()
                 .frame(height: 30)

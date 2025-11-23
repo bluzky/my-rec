@@ -12,14 +12,6 @@ struct AudioLevelIndicator: View {
         case vertical
     }
 
-    // Convenience initializer for legacy usage
-    init(audioEngine: AudioCaptureEngine, label: String) {
-        self.level = audioEngine.audioLevel
-        self.label = label
-        self.showPercentage = true
-        self.orientation = .horizontal
-    }
-
     // Primary initializer with just level
     init(level: Float, label: String? = nil, showPercentage: Bool = false, orientation: Orientation = .horizontal) {
         self.level = level
@@ -106,50 +98,4 @@ struct AudioLevelIndicator: View {
             return .gray
         }
     }
-}
-
-/// Preview provider for development
-#Preview {
-    VStack(spacing: 20) {
-        // Low level
-        AudioLevelIndicator(
-            audioEngine: {
-                let engine = AudioCaptureEngine()
-                Task { @MainActor in
-                    engine.audioLevel = 0.2
-                }
-                return engine
-            }(),
-            label: "System"
-        )
-        .frame(width: 150)
-
-        // Medium level
-        AudioLevelIndicator(
-            audioEngine: {
-                let engine = AudioCaptureEngine()
-                Task { @MainActor in
-                    engine.audioLevel = 0.5
-                }
-                return engine
-            }(),
-            label: "Mic"
-        )
-        .frame(width: 150)
-
-        // High level
-        AudioLevelIndicator(
-            audioEngine: {
-                let engine = AudioCaptureEngine()
-                Task { @MainActor in
-                    engine.audioLevel = 0.85
-                }
-                return engine
-            }(),
-            label: "Audio"
-        )
-        .frame(width: 150)
-    }
-    .padding()
-    .background(Color.black.opacity(0.9))
 }

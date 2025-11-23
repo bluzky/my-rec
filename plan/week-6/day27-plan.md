@@ -1,14 +1,14 @@
 # Day 27 - Audio Integration Testing & Mixing
 
-**Date:** November 22, 2025 (Revised)
+**Date:** November 22-23, 2025 (Revised)
 **Goal:** Verify each audio source works independently via ScreenCaptureKit (system + mic), then implement mixing
-**Status:** ✅ Phase 1 COMPLETE - Both Audio Sources Working
+**Status:** ✅ COMPLETE - Both Phases Done (with known quality limitations)
 
 ---
 
 ## Overview - REVISED APPROACH
 
-ScreenCaptureKit on macOS 15+ delivers both system audio and microphone directly (no AVAudioEngine tap). We'll simplify the pipeline and validate each source before mixing:
+ScreenCaptureKit on macOS 15+ exposes separate outputs for system audio (`.audio`) and microphone (`.microphone`). It does not auto-mix. We validate each source, then mix in-app:
 
 **Phase 1: Individual Source Testing (Priority)**
 1. Wire `SCStream` to emit `.audio` (system) and `.microphone` buffers.
@@ -17,9 +17,10 @@ ScreenCaptureKit on macOS 15+ delivers both system audio and microphone directly
 4. Confirm both sources produce valid audio in final video.
 
 **Phase 2: Audio Mixing (After Phase 1 confirmed working)**
-1. Implement audio mixing logic (combine ScreenCaptureKit buffers).
-2. Add volume controls for each source.
-3. Add A/V sync monitoring.
+1. Request both outputs from SCStream (macOS 15+).
+2. Implement lightweight in-app mixing (up-mix mic mono, sum to system stereo) with format guard.
+3. Add volume controls for each source.
+4. Add A/V sync monitoring.
 
 **Current State Analysis:**
 - ✅ Video capture working (ScreenCaptureEngine)
@@ -39,9 +40,25 @@ ScreenCaptureKit on macOS 15+ delivers both system audio and microphone directly
 
 **Phase 2 Target State:**
 - ✅ System audio + microphone mixed into SINGLE audio track
-- ✅ Individual volume controls for each source (0.0-1.0)
+- ⚠️ Volume controls not implemented (fixed 1:1 mix ratio)
 - ✅ Real-time audio mixing before encoding
-- ✅ Audio/video sync verified (±50ms tolerance)
+- ✅ Audio/video sync working (no drift detected)
+
+**Final Results (November 23, 2025):**
+- ✅ Audio mixing implemented using SimpleMixer (interleaved Float32 output)
+- ✅ Supports all device formats: Int16, Int32, Float32, Float64
+- ✅ Handles sample rates: 8kHz-192kHz (tested: 16kHz, 44.1kHz, 48kHz)
+- ✅ Device switching mid-recording works (clears cached buffers)
+- ✅ Format locking prevents encoder errors (-12737, -11800)
+- ✅ Thread-safe with serial dispatch queue
+- ✅ AVAudioConverter for professional quality resampling
+- ⚠️ Voice quality not optimal (acceptable for MVP)
+- ⚠️ Mic-only speech delayed until system buffer arrives
+- ⚠️ System audio always converted (small performance overhead)
+
+**Documentation:**
+- Created comprehensive learnings doc: `docs/audio-mixing-learnings.md`
+- 500+ lines covering all pitfalls, solutions, and best practices
 
 ---
 
@@ -58,8 +75,8 @@ ScreenCaptureKit on macOS 15+ delivers both system audio and microphone directly
 - `MyRec/Services/AudioCaptureEngine.swift`
 
 **Changes:**
-1. Set `streamConfig.captureMicrophone = isMicEnabled` and add a `.microphone` output queue.
-2. Route `.audio` (system) and `.microphone` sample buffers into `AudioCaptureEngine` for monitoring/encoding.
+1. Request `.audio` and `.microphone` outputs on macOS 15+ (`SCStream.addStreamOutput`).
+2. Route both outputs into the capture engine for monitoring/encoding.
 3. Remove dependency on AVAudioEngine tap for mic capture; keep level metering from incoming buffers.
 
 **Task 2: Make Audio Toggles Mutually Exclusive for Phase 1 (20 min)**
@@ -183,17 +200,15 @@ Microphone Buffer  → Queue →
 ### Task 1: Wire ScreenCaptureKit Microphone Capture - DONE ✅
 
 **Completed:**
-- ✅ Added `captureMicrophone` property to ScreenCaptureEngine
-- ✅ Updated `startCapture()` to accept `withMicrophone` parameter
+- ✅ Updated `startCapture()` to accept `withMicrophone` parameter (macOS 15+ only)
 - ✅ Added `.microphone` case handler in stream output delegate
-- ✅ Configured `config.captureMicrophone = true` for macOS 15+
-- ✅ Registered microphone stream output with ScreenCaptureKit
+- ✅ Registered microphone stream output with ScreenCaptureKit (15+)
 - ✅ Added `processMicrophoneBuffer()` to AudioCaptureEngine
 - ✅ Implemented microphone level monitoring from CMSampleBuffer
 - ✅ Updated AppDelegate to pass microphone flag from settings
 
 **Files Modified:**
-- `MyRec/Services/Recording/ScreenCaptureEngine.swift` - Added microphone support
+- `MyRec/Services/Recording/ScreenCaptureEngine.swift` - Added microphone support (15+)
 - `MyRec/Services/AudioCaptureEngine.swift` - Added microphone buffer processing
 - `MyRec/AppDelegate.swift` - Pass microphone flag to capture engine
 

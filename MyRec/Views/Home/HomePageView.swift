@@ -214,8 +214,3 @@ struct ActionIconButton: View {
 }
 
 // MARK: - Preview
-
-#Preview {
-    HomePageView()
-        .frame(width: 700, height: 600)
-}
