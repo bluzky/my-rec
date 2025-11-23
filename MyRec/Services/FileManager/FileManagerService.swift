@@ -118,10 +118,10 @@ class FileManagerService {
     /// - Returns: Final file URL in configured save directory
     private func generateUniqueFilename() -> URL {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyyMMddHHmmss"
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         let timestamp = dateFormatter.string(from: Date())
 
-        let filename = "REC-\(timestamp).mp4"
+        let filename = "MyRecording-\(timestamp).mp4"
         return saveDirectory.appendingPathComponent(filename)
     }
 
@@ -174,13 +174,18 @@ class FileManagerService {
         }
 
         var resolution: Resolution = .fullHD // Default
+        var naturalSize = CGSize(width: resolution.width, height: resolution.height)
         var frameRate: FrameRate = .fps30 // Default
 
         if let videoTrack = videoTracks.first {
             // Get natural size
-            let naturalSize = try await videoTrack.load(.naturalSize)
-            let width = Int(naturalSize.width)
-            let height = Int(naturalSize.height)
+            let rawSize = try await videoTrack.load(.naturalSize)
+            let transform = try await videoTrack.load(.preferredTransform)
+            let transformedSize = rawSize.applying(transform)
+            naturalSize = CGSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
+
+            let width = Int(naturalSize.width.rounded())
+            let height = Int(naturalSize.height.rounded())
 
             // Find matching resolution or use closest
             if let closestResolution = Resolution.allCases.min(by: { res1, res2 in
@@ -201,6 +206,16 @@ class FileManagerService {
         // Get duration in seconds using new API
         let duration = try await asset.load(.duration).seconds
 
+        // Generate thumbnail asynchronously
+        // TODO: Implement ThumbnailGenerator class
+        // let thumbnailGenerator = ThumbnailGenerator.shared
+        // let thumbnail = await thumbnailGenerator.generateThumbnail(
+        //     from: url,
+        //     at: CMTime(seconds: min(1.0, duration / 2), preferredTimescale: 600), // Use 1 second or middle of video
+        //     size: CGSize(width: 320, height: 180)
+        // )
+        let thumbnail: NSImage? = nil
+
         return VideoMetadata(
             filename: url.lastPathComponent,
             fileURL: url,
@@ -208,7 +223,9 @@ class FileManagerService {
             resolution: resolution,
             frameRate: frameRate,
             fileSize: fileSize,
-            createdDate: createdDate
+            createdDate: createdDate,
+            thumbnail: thumbnail,
+            naturalSize: naturalSize
         )
     }
 

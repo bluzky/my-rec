@@ -12,7 +12,9 @@ class VideoEncoder {
     private var startTime: CMTime?
 
     private let outputURL: URL
-    private let resolution: Resolution
+    private let width: Int
+    private let height: Int
+    private let nominalResolution: Resolution?
     private let frameRate: FrameRate
 
     // Audio support
@@ -26,9 +28,11 @@ class VideoEncoder {
     var onError: ((Error) -> Void)?
 
     // MARK: - Lifecycle
-    init(outputURL: URL, resolution: Resolution, frameRate: FrameRate) {
+    init(outputURL: URL, width: Int, height: Int, frameRate: FrameRate, nominalResolution: Resolution? = nil) {
         self.outputURL = outputURL
-        self.resolution = resolution
+        self.width = width
+        self.height = height
+        self.nominalResolution = nominalResolution
         self.frameRate = frameRate
     }
 
@@ -76,8 +80,8 @@ class VideoEncoder {
         // Create pixel buffer adaptor for BGRA format
         let pixelBufferAttributes: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: resolution.width,
-            kCVPixelBufferHeightKey as String: resolution.height
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height
         ]
 
         pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
@@ -268,36 +272,51 @@ class VideoEncoder {
 
         print("🎥 VideoEncoder: Creating video settings...")
         print("  Codec: H.264")
-        print("  Resolution: \(resolution.width)x\(resolution.height)")
+        print("  Resolution: \(width)x\(height)")
         print("  Frame Rate: \(frameRate.value)")
         print("  Bitrate: \(bitrate)")
 
         let compressionProperties: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,
-            AVVideoProfileLevelKey: AVVideoProfileLevelH264BaselineAutoLevel,
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel, // Higher quality profile
             AVVideoMaxKeyFrameIntervalKey: frameRate.value * 2,
-            AVVideoExpectedSourceFrameRateKey: frameRate.value
+            AVVideoExpectedSourceFrameRateKey: frameRate.value,
+            AVVideoAllowFrameReorderingKey: false,
+            AVVideoH264EntropyModeKey: AVVideoH264EntropyModeCABAC
         ]
 
         return [
             AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoWidthKey: resolution.width,
-            AVVideoHeightKey: resolution.height,
+            AVVideoWidthKey: width,
+            AVVideoHeightKey: height,
             AVVideoCompressionPropertiesKey: compressionProperties
         ]
     }
 
     private func calculateBitrate() -> Int {
+        // Choose bitrate based on actual output dimensions (falling back to nominal if provided)
+        let pixels = width * height
         let baseRate: Int
-        switch resolution {
-        case .hd:       baseRate = 2_500_000  // 2.5 Mbps
-        case .fullHD:   baseRate = 5_000_000  // 5 Mbps
-        case .twoK:     baseRate = 8_000_000  // 8 Mbps
-        case .fourK:    baseRate = 15_000_000 // 15 Mbps
+
+        if let nominal = nominalResolution {
+            switch nominal {
+            case .hd:       baseRate = 6_000_000
+            case .fullHD:   baseRate = 12_000_000
+            case .twoK:     baseRate = 20_000_000
+            case .fourK:    baseRate = 45_000_000
+            }
+        } else {
+            switch pixels {
+            case let p where p >= 3840 * 2160: baseRate = 45_000_000
+            case let p where p >= 2560 * 1440: baseRate = 20_000_000
+            case let p where p >= 1920 * 1080: baseRate = 12_000_000
+            case let p where p >= 1280 * 720:  baseRate = 6_000_000
+            default: baseRate = 4_000_000
+            }
         }
 
-        // Adjust for frame rate
-        let fpsMultiplier = Double(frameRate.value) / 30.0
+        // Adjust for frame rate (scale up for >30fps, but never below base rate)
+        let fpsMultiplier = max(1.0, Double(frameRate.value) / 30.0)
         return Int(Double(baseRate) * fpsMultiplier)
     }
 }

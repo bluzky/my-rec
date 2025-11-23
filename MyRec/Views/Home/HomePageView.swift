@@ -30,6 +30,13 @@ struct HomePageView: View {
         .background(Color(NSColor.windowBackgroundColor))
         .toolbar {
             ToolbarItem(placement: .automatic) {
+                Button(action: { viewModel.openRecordingDirectory() }) {
+                    Image(systemName: "folder")
+                }
+                .help("Open Recording Directory")
+            }
+
+            ToolbarItem(placement: .automatic) {
                 Button(action: { viewModel.openSettings() }) {
                     Image(systemName: "gearshape")
                 }
@@ -127,14 +134,35 @@ struct HomeRecordingRowView: View {
         HStack(spacing: 16) {
             // Thumbnail
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(recording.thumbnailColor.opacity(0.2))
-                    .frame(width: 120, height: 80)
+                if let thumbnail = recording.thumbnail {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 120, height: 80)
+                        .clipped()
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.black.opacity(0.1), lineWidth: 1)
+                        )
+                } else {
+                    // Fallback placeholder
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(recording.thumbnailColor.opacity(0.2))
+                        .frame(width: 120, height: 80)
+                }
 
+                // Play button overlay
                 Image(systemName: "play.circle.fill")
-                    .font(.system(size: 32))
+                    .font(.system(size: 24))
                     .foregroundColor(.white)
-                    .shadow(radius: 4)
+                    .shadow(color: .black.opacity(0.3), radius: 4)
+                    .background(
+                        Circle()
+                            .fill(Color.black.opacity(0.3))
+                            .frame(width: 28, height: 28)
+                            .blur(radius: 1)
+                    )
             }
             .onTapGesture(perform: onPlay)
 
@@ -144,17 +172,6 @@ struct HomeRecordingRowView: View {
                     Text(recording.filename)
                         .font(.system(.body, design: .monospaced))
                         .fontWeight(.medium)
-
-                    if isNewRecording(recording) {
-                        Text("NEW")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green)
-                            .cornerRadius(4)
-                    }
                 }
 
                 Text("\(recording.formattedDuration) • \(recording.formattedFileSize) • \(recording.displayResolution)")
@@ -178,11 +195,6 @@ struct HomeRecordingRowView: View {
         .padding(.vertical, 16)
     }
 
-    private func isNewRecording(_ recording: VideoMetadata) -> Bool {
-        // Consider recordings from the last hour as "new"
-        let hourAgo = Date().addingTimeInterval(-3600)
-        return recording.createdDate > hourAgo
-    }
 }
 
 // MARK: - Action Icon Button

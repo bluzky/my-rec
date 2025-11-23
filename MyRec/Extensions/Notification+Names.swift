@@ -18,4 +18,5 @@ public extension Notification.Name {
     static let openTrim = Notification.Name("openTrim")
     static let closeTrim = Notification.Name("closeTrim")
     static let showDashboard = Notification.Name("showDashboard")
+    static let recordingSaved = Notification.Name("recordingSaved")
 }

@@ -54,15 +54,26 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
         tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("recording-\(UUID().uuidString).mp4")
 
-        // ADD: Create and start encoder
+        print("🎵 System audio enabled: \(captureAudio)")
+        print("🎤 Microphone enabled: \(captureMicrophone)")
+
+        // Setup stream (permission already checked in AppDelegate) and get output dimensions
+        let streamSetup = try await setupStream(resolution: resolution, frameRate: frameRate)
+        stream = streamSetup.stream
+
+        // Prepare encoder using actual stream output dimensions to avoid scaling artifacts
         guard let tempURL = tempURL else {
             throw CaptureError.configurationFailed
         }
 
+        print("🎯 Output dimensions: \(streamSetup.outputSize.width)x\(streamSetup.outputSize.height)")
+
         videoEncoder = VideoEncoder(
             outputURL: tempURL,
-            resolution: resolution,
-            frameRate: frameRate
+            width: streamSetup.outputSize.width,
+            height: streamSetup.outputSize.height,
+            frameRate: frameRate,
+            nominalResolution: resolution
         )
 
         videoEncoder?.onFrameEncoded = { frame in
@@ -75,8 +86,6 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
 
         try videoEncoder?.startEncoding(withAudio: captureAudio || captureMicrophone)
         print("✅ Encoder started - Output: \(tempURL.lastPathComponent)")
-        print("🎵 System audio enabled: \(captureAudio)")
-        print("🎤 Microphone enabled: \(captureMicrophone)")
 
         // Initialize mixer if both audio sources enabled (macOS 15+)
         if #available(macOS 15.0, *), captureAudio && captureMicrophone {
@@ -86,8 +95,8 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
             audioMixer = nil
         }
 
-        // Setup stream (permission already checked in AppDelegate)
-        try await setupStream(resolution: resolution, frameRate: frameRate)
+        // Start capture now that encoder is ready
+        try await stream?.startCapture()
 
         isCapturing = true
         print("✅ ScreenCaptureEngine: Capture started")
@@ -376,7 +385,11 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
         )
     }
 
-    private func setupStream(resolution: Resolution, frameRate: FrameRate) async throws {
+    private func makeEven(_ value: Int) -> Int {
+        return value % 2 == 0 ? value : value - 1
+    }
+
+    private func setupStream(resolution: Resolution, frameRate: FrameRate) async throws -> (stream: SCStream, outputSize: (width: Int, height: Int)) {
         // Get available content
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
@@ -405,8 +418,8 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
             config.sourceRect = sckRegion
 
             // Set output dimensions to match the region size
-            config.width = Int(validatedRegion.width)
-            config.height = Int(validatedRegion.height)
+            config.width = makeEven(Int(validatedRegion.width))
+            config.height = makeEven(Int(validatedRegion.height))
 
             print("📐 Using custom region: \(validatedRegion)")
             print("📐 SCK coordinates: \(sckRegion)")
@@ -447,28 +460,27 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCStreamOutput, Ob
         }
 
         // Create stream
-        stream = SCStream(filter: filter, configuration: config, delegate: self)
+        let newStream = SCStream(filter: filter, configuration: config, delegate: self)
 
         // Add stream output for video
-        try stream?.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global())
+        try newStream.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global())
 
         // Add stream output for audio if enabled (macOS 13+)
         if captureAudio {
             if #available(macOS 13.0, *) {
-                try stream?.addStreamOutput(self, type: .audio, sampleHandlerQueue: .global())
+                try newStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: .global())
             }
         }
 
         // Add stream output for microphone if enabled (macOS 15+)
         if captureMicrophone {
             if #available(macOS 15.0, *) {
-                try stream?.addStreamOutput(self, type: .microphone, sampleHandlerQueue: .global())
+                try newStream.addStreamOutput(self, type: .microphone, sampleHandlerQueue: .global())
                 print("🎤 Microphone stream output registered")
             }
         }
 
-        // Start capture
-        try await stream?.startCapture()
+        return (newStream, (config.width, config.height))
     }
 }
 
