@@ -31,7 +31,6 @@ let package = Package(
                 "Services/FileManager/FileManagerService.swift",
                 "Services/Recording/ScreenCaptureEngine.swift",
                 "Services/Recording/VideoEncoder.swift",
-                "Services/AudioCaptureEngine.swift",
                 "Extensions/Notification+Names.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",

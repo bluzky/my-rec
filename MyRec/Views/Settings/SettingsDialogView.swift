@@ -351,7 +351,3 @@ struct SettingsDialogView: View {
 }
 
 // MARK: - Preview
-
-#Preview {
-    SettingsDialogView(settingsManager: SettingsManager.shared)
-}

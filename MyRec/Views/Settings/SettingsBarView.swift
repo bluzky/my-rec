@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 /// Settings bar displayed during region selection (macOS native style)
 ///
@@ -7,7 +8,6 @@ struct SettingsBarView: View {
     // MARK: - Properties
 
     @ObservedObject var settingsManager: SettingsManager
-    @ObservedObject var audioCaptureEngine: AudioCaptureEngine
     let regionSize: CGSize
     let onClose: () -> Void
     let onRecord: () -> Void
@@ -15,7 +15,6 @@ struct SettingsBarView: View {
 
     @State private var isHoveringRecord = false
     @State private var isPressingRecord = false
-    @State private var hasCheckedMicrophonePermission = false
 
     // MARK: - Body
 
@@ -187,45 +186,31 @@ struct SettingsBarView: View {
                     offIcon: "speaker.slash.fill"
                 )
 
-                // Microphone toggle with integrated vertical level indicator
-                HStack(spacing: 4) {
-                    ToggleIconButton(
-                        icon: "mic.fill",
-                        isOn: $settingsManager.defaultSettings.microphoneEnabled,
-                        help: "Microphone",
-                        isDisabled: isRecording,
-                        onIcon: "mic.fill",
-                        offIcon: "mic.slash.fill"
-                    )
-
-                    // Vertical microphone level indicator (always visible)
-                    AudioLevelIndicator(
-                        level: audioCaptureEngine.microphoneLevel,
-                        orientation: .vertical
-                    )
-                    .frame(width: 6, height: 32)
-                    .opacity(settingsManager.defaultSettings.microphoneEnabled ? 1.0 : 0.3)
-                }
-            }
-            .padding(.horizontal, 8)
-            .onChange(of: settingsManager.defaultSettings.microphoneEnabled) { isEnabled in
-                // Start/stop microphone monitoring based on toggle state
-                if isEnabled {
-                    Task {
-                        let granted = await audioCaptureEngine.requestMicrophonePermission()
-                        if granted {
-                            audioCaptureEngine.startMicrophoneMonitoring()
-                        } else {
-                            // Reset toggle if permission denied
-                            await MainActor.run {
-                                settingsManager.defaultSettings.microphoneEnabled = false
+                // Microphone toggle
+                ToggleIconButton(
+                    icon: "mic.fill",
+                    isOn: $settingsManager.defaultSettings.microphoneEnabled,
+                    help: "Microphone",
+                    isDisabled: isRecording,
+                    onIcon: "mic.fill",
+                    offIcon: "mic.slash.fill"
+                )
+                .onChange(of: settingsManager.defaultSettings.microphoneEnabled) { isEnabled in
+                    if isEnabled {
+                        // Phase 2: Check microphone permission when enabled
+                        Task {
+                            let granted = await checkMicrophonePermission()
+                            if !granted {
+                                // Reset toggle if permission denied
+                                await MainActor.run {
+                                    settingsManager.defaultSettings.microphoneEnabled = false
+                                }
                             }
                         }
                     }
-                } else {
-                    audioCaptureEngine.stopMicrophoneMonitoring()
                 }
             }
+            .padding(.horizontal, 8)
 
             Divider()
                 .frame(height: 30)
@@ -278,38 +263,19 @@ struct SettingsBarView: View {
                 .strokeBorder(Color.primary.opacity(0.1), lineWidth: 0.5)
         )
         .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
-        .onAppear {
-            // Check microphone permission on appear
-            checkAndStartMicrophoneMonitoring()
-        }
-        .onDisappear {
-            // Stop microphone monitoring when view disappears
-            if audioCaptureEngine.isMicrophoneMonitoring {
-                audioCaptureEngine.stopMicrophoneMonitoring()
-                print("🛑 Stopped microphone monitoring (view disappeared)")
-            }
-        }
     }
 
     // MARK: - Helper Methods
 
-    private func checkAndStartMicrophoneMonitoring() {
-        guard !hasCheckedMicrophonePermission else { return }
-        hasCheckedMicrophonePermission = true
-
-        // Check if we already have microphone permission (without requesting)
-        let hasPermission = audioCaptureEngine.checkMicrophonePermission()
-
-        if hasPermission && settingsManager.defaultSettings.microphoneEnabled {
-            // Has permission and toggle is enabled - start monitoring
-            audioCaptureEngine.startMicrophoneMonitoring()
-            print("✅ Auto-started microphone monitoring (permission granted)")
-        } else if !hasPermission && settingsManager.defaultSettings.microphoneEnabled {
-            // No permission but toggle is on - disable it
-            settingsManager.defaultSettings.microphoneEnabled = false
-            print("⚠️ Microphone permission not granted - toggle disabled")
-        } else {
-            print("ℹ️ Microphone toggle is off - monitoring not started")
+    /// Check and request microphone permission if needed
+    private func checkMicrophonePermission() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            return true
+        case .notDetermined:
+            return await AVCaptureDevice.requestAccess(for: .audio)
+        default:
+            return false
         }
     }
 
@@ -445,7 +411,6 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
-                        audioCaptureEngine: AudioCaptureEngine(),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},
@@ -464,7 +429,6 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
-                        audioCaptureEngine: AudioCaptureEngine(),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},

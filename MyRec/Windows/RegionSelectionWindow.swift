@@ -98,11 +98,7 @@ public class RegionSelectionWindow: NSWindow {
 
     /// Hide the window
     public func hide() {
-        // Stop microphone monitoring when window is hidden
-        if viewModel.audioCaptureEngine.isMicrophoneMonitoring {
-            viewModel.audioCaptureEngine.stopMicrophoneMonitoring()
-            print("🛑 Stopped microphone monitoring (window hidden)")
-        }
+        // No need to stop microphone monitoring - ScreenCaptureKit handles it during recording
         self.orderOut(nil)
     }
 

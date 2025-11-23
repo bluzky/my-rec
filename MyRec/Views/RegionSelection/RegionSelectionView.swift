@@ -286,7 +286,6 @@ struct SettingsBarContainer: View {
             Spacer()
             SettingsBarView(
                 settingsManager: SettingsManager.shared,
-                audioCaptureEngine: viewModel.audioCaptureEngine,
                 regionSize: viewModel.selectedRegion?.size ?? viewModel.screenBounds.size,
                 onClose: onClose,
                 onRecord: onRecord,

@@ -262,8 +262,3 @@ struct PlaybackSpeedMenu: View {
 }
 
 // MARK: - Preview
-
-#Preview {
-    PreviewDialogView(viewModel: PreviewDialogViewModel(recording: .mock()))
-        .frame(width: 900, height: 600)
-}

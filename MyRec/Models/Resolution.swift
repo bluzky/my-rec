@@ -1,6 +1,6 @@
 import Foundation
 
-enum Resolution: String, Codable, CaseIterable {
+public enum Resolution: String, Codable, CaseIterable {
     case hd = "720P"
     case fullHD = "1080P"
     case twoK = "2K"

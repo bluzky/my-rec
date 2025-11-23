@@ -285,11 +285,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func startCaptureEngine(region: CGRect) async throws {
         let resolution = SettingsManager.shared.defaultSettings.resolution
         let frameRate = SettingsManager.shared.defaultSettings.frameRate
+        let audioEnabled = SettingsManager.shared.defaultSettings.audioEnabled
+        let microphoneEnabled = SettingsManager.shared.defaultSettings.microphoneEnabled
 
         print("📹 Starting capture...")
         print("  Region: \(region)")
         print("  Resolution: \(resolution.displayName)")
         print("  Frame Rate: \(frameRate.displayName)")
+        print("  System Audio: \(audioEnabled)")
+        print("  Microphone: \(microphoneEnabled)")
 
         // Create and configure capture engine
         captureEngine = ScreenCaptureEngine()
@@ -300,11 +304,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.handleCaptureError(error)
         }
 
-        // Start capture
+        // Start capture with audio and microphone settings
         try await captureEngine?.startCapture(
             region: region,
             resolution: resolution,
-            frameRate: frameRate
+            frameRate: frameRate,
+            withAudio: audioEnabled,
+            withMicrophone: microphoneEnabled
         )
 
         print("✅ Recording started - Region: \(region)")

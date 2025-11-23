@@ -16,8 +16,9 @@ class VideoEncoder {
     private let frameRate: FrameRate
 
     // Audio support
-    private var audioCaptureEngine: AudioCaptureEngine?
+    private var audioInput: AVAssetWriterInput?
     private var includeAudio: Bool = false
+    private let audioQueue = DispatchQueue(label: "com.myrec.videoencoder.audio", qos: .userInitiated)
 
     // MARK: - Callbacks
     var onFrameEncoded: ((Int) -> Void)?
@@ -86,10 +87,21 @@ class VideoEncoder {
 
         // Configure audio input if enabled
         if includeAudio {
-            audioCaptureEngine = AudioCaptureEngine()
-            if let audioEngine = audioCaptureEngine {
-                try audioEngine.setupAudioInput(for: assetWriter)
-                print("🎵 VideoEncoder: Audio input configured")
+            let audioSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 48000,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderBitRateKey: 128000
+            ]
+
+            audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+            audioInput?.expectsMediaDataInRealTime = true
+
+            if let audioInput = audioInput, assetWriter.canAdd(audioInput) {
+                assetWriter.add(audioInput)
+                print("🎵 VideoEncoder: Audio input configured (AAC 48kHz stereo)")
+            } else {
+                print("⚠️ VideoEncoder: Cannot add audio input to asset writer")
             }
         }
 
@@ -179,9 +191,12 @@ class VideoEncoder {
 
     func appendAudio(_ sampleBuffer: CMSampleBuffer) {
         guard isEncoding, includeAudio else { return }
+        guard let audioInput = audioInput, audioInput.isReadyForMoreMediaData else { return }
 
-        // Pass audio buffer to audio capture engine
-        audioCaptureEngine?.processSampleBuffer(sampleBuffer)
+        // Write audio buffer directly to asset writer
+        audioQueue.async {
+            audioInput.append(sampleBuffer)
+        }
     }
 
     func finishEncoding() async throws -> URL {
@@ -193,9 +208,9 @@ class VideoEncoder {
 
         print("🔄 VideoEncoder: Finishing encoding...")
 
-        // Stop audio capture first
-        if includeAudio {
-            audioCaptureEngine?.stopCapturing()
+        // Mark audio input as finished
+        if includeAudio, let audioInput = audioInput {
+            audioInput.markAsFinished()
             print("✅ VideoEncoder: Audio input finished")
         }
 
