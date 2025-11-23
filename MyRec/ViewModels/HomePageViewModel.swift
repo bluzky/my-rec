@@ -30,7 +30,7 @@ class HomePageViewModel: ObservableObject {
 
     // MARK: - Data Management
 
-    /// Load recent recordings from disk (limit to 5 for home page)
+    /// Load all recordings from disk
     private func loadRecentRecordings() {
         isLoading = true
         print("📂 Loading recordings from: \(settingsManager.savePath.path)")
@@ -41,13 +41,10 @@ class HomePageViewModel: ObservableObject {
                 let fileManagerService = FileManagerService.shared
                 let allRecordings = try await fileManagerService.getSavedRecordings()
 
-                // Take only the 5 most recent
-                let recentRecordings = Array(allRecordings.prefix(5))
-
                 await MainActor.run {
-                    self.recentRecordings = recentRecordings
+                    self.recentRecordings = allRecordings
                     isLoading = false
-                    print("✅ Loaded \(self.recentRecordings.count) recent recordings")
+                    print("✅ Loaded \(self.recentRecordings.count) recordings")
                 }
 
             } catch {

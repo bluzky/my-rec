@@ -25,13 +25,14 @@ class PreviewDialogWindowController: NSWindowController {
         // Create the window
         let window = NSWindow(contentViewController: hostingController)
         window.title = recording.filename
-        window.setContentSize(NSSize(width: 900, height: 600))
+        // Default window size tuned to 16:10 content area
+        window.setContentSize(NSSize(width: 960, height: 600))
         window.styleMask = [NSWindow.StyleMask.titled, NSWindow.StyleMask.closable, NSWindow.StyleMask.resizable, NSWindow.StyleMask.miniaturizable]
         window.isReleasedWhenClosed = true // Release when closed
         window.center()
 
         // Set minimum size
-        window.minSize = NSSize(width: 800, height: 500)
+        window.minSize = NSSize(width: 600, height: 400)
 
         // Initialize with window
         self.init(window: window)

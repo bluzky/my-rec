@@ -118,10 +118,10 @@ class FileManagerService {
     /// - Returns: Final file URL in configured save directory
     private func generateUniqueFilename() -> URL {
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyyMMddHHmmss"
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         let timestamp = dateFormatter.string(from: Date())
 
-        let filename = "REC-\(timestamp).mp4"
+        let filename = "MyRecording-\(timestamp).mp4"
         return saveDirectory.appendingPathComponent(filename)
     }
 

@@ -144,17 +144,6 @@ struct HomeRecordingRowView: View {
                     Text(recording.filename)
                         .font(.system(.body, design: .monospaced))
                         .fontWeight(.medium)
-
-                    if isNewRecording(recording) {
-                        Text("NEW")
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green)
-                            .cornerRadius(4)
-                    }
                 }
 
                 Text("\(recording.formattedDuration) • \(recording.formattedFileSize) • \(recording.displayResolution)")
@@ -178,11 +167,6 @@ struct HomeRecordingRowView: View {
         .padding(.vertical, 16)
     }
 
-    private func isNewRecording(_ recording: VideoMetadata) -> Bool {
-        // Consider recordings from the last hour as "new"
-        let hourAgo = Date().addingTimeInterval(-3600)
-        return recording.createdDate > hourAgo
-    }
 }
 
 // MARK: - Action Icon Button
