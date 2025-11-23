@@ -15,8 +15,12 @@ public class RegionSelectionViewModel: ObservableObject {
     private let minimumSize: CGSize = CGSize(width: 50, height: 50)
     private let windowDetectionService = WindowDetectionService.shared
 
-    public init(screenBounds: CGRect = NSScreen.main?.frame ?? .zero) {
+    // Audio capture engine for microphone level monitoring
+    let audioCaptureEngine: AudioCaptureEngine
+
+    public init(screenBounds: CGRect = NSScreen.main?.frame ?? .zero, audioCaptureEngine: AudioCaptureEngine = AudioCaptureEngine()) {
         self.screenBounds = screenBounds
+        self.audioCaptureEngine = audioCaptureEngine
     }
 
     // MARK: - Drag Handling

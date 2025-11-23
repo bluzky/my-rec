@@ -91,10 +91,18 @@ public class RegionSelectionWindow: NSWindow {
     public func show() {
         self.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Note: Microphone monitoring will be started by SettingsBarView.onAppear
+        // if permission is granted and toggle is enabled
     }
 
     /// Hide the window
     public func hide() {
+        // Stop microphone monitoring when window is hidden
+        if viewModel.audioCaptureEngine.isMicrophoneMonitoring {
+            viewModel.audioCaptureEngine.stopMicrophoneMonitoring()
+            print("🛑 Stopped microphone monitoring (window hidden)")
+        }
         self.orderOut(nil)
     }
 
