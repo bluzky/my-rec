@@ -9,9 +9,8 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
     // MARK: - Properties
     private var stream: SCStream?
     private var captureRegion: CGRect = .zero
-    private var frameCount: Int = 0
     private var isCapturing = false
-    private var startTime: CMTime?
+    private var recordingStartTime: Date?
 
     // SCRecordingOutput integration (macOS 15+)
     private var recordingOutput: SCRecordingOutput?
@@ -21,12 +20,12 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
     private var captureAudio: Bool = false
     private var captureMicrophone: Bool = false
 
-    // Audio level monitoring (preserved for UI feedback)
-    @Published var audioLevel: Float = 0.0
-    @Published var microphoneLevel: Float = 0.0
+    // Continuation for async recording completion
+    private var recordingFinishedContinuation: CheckedContinuation<Void, Error>?
 
     // MARK: - Callbacks
-    var onFrameCaptured: ((Int, CMTime) -> Void)?
+    var onRecordingStarted: (() -> Void)?
+    var onRecordingFinished: ((TimeInterval) -> Void)?
     var onError: ((Error) -> Void)?
 
     // MARK: - Public Interface
@@ -42,8 +41,7 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         guard !isCapturing else { return }
 
         self.captureRegion = region
-        self.frameCount = 0
-        self.startTime = nil
+        self.recordingStartTime = Date()
         self.captureAudio = withAudio
         self.captureMicrophone = withMicrophone
 
@@ -58,7 +56,7 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         let streamSetup = try await setupStream(resolution: resolution, frameRate: frameRate)
         stream = streamSetup.stream
 
-        guard let outputURL = outputURL else {
+        guard let outputURL = outputURL, let stream = stream else {
             throw CaptureError.configurationFailed
         }
 
@@ -77,14 +75,22 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
             throw CaptureError.configurationFailed
         }
 
-        // Add recording output to stream
-        try stream?.addRecordingOutput(recordingOutput)
-        print("✅ Recording output configured - File: \(outputURL.lastPathComponent)")
+        // Add recording output to stream - fail early if this doesn't work
+        do {
+            try stream.addRecordingOutput(recordingOutput)
+            print("✅ Recording output configured - File: \(outputURL.lastPathComponent)")
+        } catch {
+            print("❌ Failed to add recording output: \(error)")
+            self.recordingOutput = nil
+            self.outputURL = nil
+            throw error
+        }
 
         // Start capture
-        try await stream?.startCapture()
+        try await stream.startCapture()
 
         isCapturing = true
+        onRecordingStarted?()
         print("✅ ScreenCaptureEngine: Capture started")
     }
 
@@ -98,42 +104,64 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         print("🔄 ScreenCaptureEngine: Stopping capture...")
         isCapturing = false
 
-        guard let outputURL = outputURL, let recordingOutput = recordingOutput else {
+        guard let outputURL = outputURL, let recordingOutput = recordingOutput, let stream = stream else {
             throw CaptureError.configurationFailed
         }
 
-        // Remove recording output from stream to finalize the file
-        do {
-            try stream?.removeRecordingOutput(recordingOutput)
-            print("✅ ScreenCaptureEngine: Recording output removed - file finalizing")
-        } catch {
-            print("❌ ScreenCaptureEngine: Error removing recording output: \(error)")
-            throw error
+        // Wait for recording to finish using continuation
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.recordingFinishedContinuation = continuation
+
+            // Remove recording output from stream to finalize the file
+            do {
+                try stream.removeRecordingOutput(recordingOutput)
+                print("✅ ScreenCaptureEngine: Recording output removed - file finalizing")
+            } catch {
+                print("❌ ScreenCaptureEngine: Error removing recording output: \(error)")
+                self.recordingFinishedContinuation = nil
+                continuation.resume(throwing: error)
+            }
         }
 
-        // Wait a moment for the file to be fully written
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        print("✅ ScreenCaptureEngine: Recording finalized")
+
+        // Verify file exists and has content
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            do {
+                let attributes = try FileManager.default.attributesOfItem(atPath: outputURL.path)
+                if let fileSize = attributes[.size] as? Int64 {
+                    print("✅ ScreenCaptureEngine: File verified - Size: \(fileSize) bytes")
+                }
+            } catch {
+                print("⚠️ ScreenCaptureEngine: Could not verify file: \(error)")
+            }
+        } else {
+            print("❌ ScreenCaptureEngine: Output file does not exist!")
+            throw CaptureError.configurationFailed
+        }
 
         // Stop stream
         do {
-            try await stream?.stopCapture()
+            try await stream.stopCapture()
             print("✅ ScreenCaptureEngine: Stream stopped")
         } catch {
             print("❌ ScreenCaptureEngine: Error stopping stream: \(error)")
             // Continue cleanup even if stream stop fails
         }
 
-        // Cleanup
-        let finalFrameCount = frameCount
-        let result = outputURL
+        // Calculate recording duration
+        let duration = recordingStartTime.map { Date().timeIntervalSince($0) } ?? 0
 
-        stream = nil
+        // Cleanup
+        let result = outputURL
+        self.stream = nil
         self.recordingOutput = nil
         self.outputURL = nil
-        frameCount = 0
-        startTime = nil
+        self.recordingStartTime = nil
 
-        print("✅ ScreenCaptureEngine: Capture stopped - \(finalFrameCount) frames - File: \(result.path)")
+        // Notify completion with duration
+        onRecordingFinished?(duration)
+        print("✅ ScreenCaptureEngine: Capture stopped - Duration: \(String(format: "%.1f", duration))s - File: \(result.path)")
         return result
     }
 
@@ -148,11 +176,25 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
 
     public func recordingOutput(_ output: SCRecordingOutput, didFailWithError error: Error) {
         print("❌ ScreenCaptureEngine: Recording failed: \(error)")
+
+        // Resume continuation with error if waiting
+        if let continuation = recordingFinishedContinuation {
+            recordingFinishedContinuation = nil
+            continuation.resume(throwing: error)
+        }
+
+        // Also notify error callback
         onError?(error)
     }
 
     public func recordingOutputDidFinishRecording(_ output: SCRecordingOutput) {
         print("✅ ScreenCaptureEngine: Recording finished successfully")
+
+        // Resume continuation if waiting
+        if let continuation = recordingFinishedContinuation {
+            recordingFinishedContinuation = nil
+            continuation.resume()
+        }
     }
 
     // MARK: - Private Methods
@@ -223,7 +265,7 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         // Configure stream
         let config = SCStreamConfiguration()
 
-        // Use custom region if provided, otherwise use resolution dimensions
+        // Configure capture region and output dimensions
         if captureRegion != .zero {
             // Validate and clamp region to display bounds
             let validatedRegion = validateRegion(captureRegion, for: display)
@@ -234,18 +276,20 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
             // Set the source rect to capture only the selected region
             config.sourceRect = sckRegion
 
-            // Set output dimensions to match the region size
-            config.width = makeEven(Int(validatedRegion.width))
-            config.height = makeEven(Int(validatedRegion.height))
+            // Scale to resolution height while preserving region aspect ratio
+            let regionAspect = validatedRegion.width / validatedRegion.height
 
-            print("📐 Using custom region: \(validatedRegion)")
+            config.height = resolution.height
+            config.width = makeEven(Int(CGFloat(resolution.height) * regionAspect))
+
+            print("📐 Custom region: \(validatedRegion)")
             print("📐 SCK coordinates: \(sckRegion)")
-            print("📐 Output size: \(config.width)x\(config.height)")
+            print("📐 Output size: \(config.width)×\(config.height) (scaled from \(Int(validatedRegion.width))×\(Int(validatedRegion.height)) to fit height: \(resolution.height))")
         } else {
             // Full screen capture using resolution settings
             config.width = resolution.width
             config.height = resolution.height
-            print("📐 Using full screen with resolution: \(resolution.displayName)")
+            print("📐 Full screen with resolution: \(resolution.displayName)")
         }
 
         config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(frameRate.value))
@@ -292,7 +336,7 @@ enum CaptureError: LocalizedError {
         case .permissionDenied:
             return "Screen recording permission denied. Please enable in System Settings > Privacy & Security > Screen Recording"
         case .captureUnavailable:
-            return "Screen capture is unavailable. Please ensure macOS 13 or later."
+            return "Screen capture is unavailable. Please ensure macOS 15 or later."
         case .configurationFailed:
             return "Failed to configure screen capture."
         case .notCapturing:

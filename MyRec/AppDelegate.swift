@@ -23,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Engine
     private var captureEngine: ScreenCaptureEngine?
-    private var frameCount: Int = 0
     private var recordingStartTime: Date?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -88,6 +87,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(handleOpenTrim(_:)),
             name: .openTrim,
+            object: nil
+        )
+
+        // Listen for preview dialog closed notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePreviewDialogClosed),
+            name: .previewDialogClosed,
             object: nil
         )
 
@@ -167,6 +174,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             print("⚠️ No recording data found in notification")
         }
+    }
+
+    @objc private func handlePreviewDialogClosed() {
+        print("🗑 Preview dialog closed - releasing reference")
+        previewDialogWindowController = nil
     }
 
     
@@ -297,8 +309,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create and configure capture engine
         captureEngine = ScreenCaptureEngine()
-        captureEngine?.onFrameCaptured = { [weak self] frame, time in
-            self?.handleFrameCaptured(frame: frame, time: time)
+        captureEngine?.onRecordingStarted = { [weak self] in
+            self?.handleRecordingStarted()
+        }
+        captureEngine?.onRecordingFinished = { [weak self] duration in
+            self?.handleRecordingFinished(duration: duration)
         }
         captureEngine?.onError = { [weak self] error in
             self?.handleCaptureError(error)
@@ -330,7 +345,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 print("✅ AppDelegate: Recording stopped successfully")
                 print("📁 Temp file: \(tempVideoURL.path)")
-                print("📊 Total frames: \(frameCount)")
 
                 // Use FileManagerService to save file permanently
                 let metadata = try await FileManagerService.shared.saveVideoFile(from: tempVideoURL)
@@ -376,29 +390,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @discardableResult
-    private func resetRecordingState() -> Int {
-        let totalFrames = frameCount
-        frameCount = 0
+    private func resetRecordingState() {
         captureEngine = nil
         recordingStartTime = nil
-        print("🔄 AppDelegate: Recording state reset - \(totalFrames) frames captured")
-        return totalFrames
+        print("🔄 AppDelegate: Recording state reset")
     }
 
-    private func handleFrameCaptured(frame: Int, time: CMTime) {
-        frameCount = frame
-
-        // Log every 30 frames (once per second at 30fps)
-        if frameCount % 30 == 0 {
-            print("📹 Frame \(frameCount) captured at \(String(format: "%.1f", time.seconds))s")
-        }
-
-        // Update status bar with frame count
+    private func handleRecordingStarted() {
+        print("✅ AppDelegate: Recording started")
+        // Update status bar to show recording in progress
         DispatchQueue.main.async {
             NotificationCenter.default.post(
-                name: .recordingFrameCaptured,
+                name: .recordingStarted,
+                object: nil
+            )
+        }
+    }
+
+    private func handleRecordingFinished(duration: TimeInterval) {
+        print("✅ AppDelegate: Recording finished - Duration: \(String(format: "%.1f", duration))s")
+        // Notify status bar of completion
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .recordingFinished,
                 object: nil,
-                userInfo: ["frameCount": frame, "time": time.seconds]
+                userInfo: ["duration": duration]
             )
         }
     }

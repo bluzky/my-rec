@@ -7,9 +7,10 @@
 
 import Cocoa
 import SwiftUI
+import AVFoundation
 
 /// Window controller managing the preview dialog window
-class PreviewDialogWindowController: NSWindowController {
+class PreviewDialogWindowController: NSWindowController, NSWindowDelegate {
 
     private var previewDialogView: PreviewDialogView?
     private var viewModel: PreviewDialogViewModel?
@@ -38,6 +39,9 @@ class PreviewDialogWindowController: NSWindowController {
         self.init(window: window)
         self.previewDialogView = previewDialogView
         self.viewModel = viewModel
+
+        // Set self as window delegate to detect when it closes
+        window.delegate = self
     }
 
     /// Show the preview dialog window
@@ -49,5 +53,22 @@ class PreviewDialogWindowController: NSWindowController {
     /// Close the preview dialog window
     override func close() {
         window?.close()
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_ notification: Notification) {
+        print("🗑 Preview dialog window closing - stopping playback")
+
+        // Stop playback immediately when window closes
+        viewModel?.player?.pause()
+        viewModel?.player = nil
+
+        // Clean up references
+        previewDialogView = nil
+        viewModel = nil
+
+        // Notify AppDelegate to release its reference
+        NotificationCenter.default.post(name: .previewDialogClosed, object: nil)
     }
 }

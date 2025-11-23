@@ -283,14 +283,7 @@ public class StatusBarController: NSObject, ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Listen for frame capture notifications
-        NotificationCenter.default.publisher(for: .recordingFrameCaptured)
-            .sink { [weak self] notification in
-                guard let frameCount = notification.userInfo?["frameCount"] as? Int,
-                      let time = notification.userInfo?["time"] as? Double else { return }
-                self?.handleFrameCaptured(frameCount: frameCount, time: time)
-            }
-            .store(in: &cancellables)
+        // Frame-by-frame updates removed - SCRecordingOutput handles encoding internally
     }
 
     private func updateMenuForState(_ state: RecordingState) {
@@ -353,16 +346,8 @@ public class StatusBarController: NSObject, ObservableObject {
 
     // MARK: - Frame Capture Handling
 
-    private func handleFrameCaptured(frameCount: Int, time: Double) {
-        // Update elapsed time based on actual capture time
-        elapsedTime = time
-
-        // Update inline recording controls with new time
-        updateRecordingControls()
-
-        // Log frame count every 30 frames (console logging already in AppDelegate)
-        // This method just updates the UI
-    }
+    // Frame tracking removed - SCRecordingOutput handles encoding internally
+    // UI now updates via timer-based elapsed time tracking
 
 
     @objc private func statusBarButtonClicked() {
