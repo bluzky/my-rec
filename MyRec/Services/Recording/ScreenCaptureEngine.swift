@@ -25,7 +25,7 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
 
     // MARK: - Callbacks
     var onRecordingStarted: (() -> Void)?
-    var onRecordingFinished: ((TimeInterval) -> Void)?
+    var onRecordingFinished: ((TimeInterval, URL) -> Void)?  // Pass file URL when finished
     var onError: ((Error) -> Void)?
 
     // MARK: - Public Interface
@@ -159,9 +159,8 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         self.outputURL = nil
         self.recordingStartTime = nil
 
-        // Notify completion with duration
-        onRecordingFinished?(duration)
-        print("✅ ScreenCaptureEngine: Capture stopped - Duration: \(String(format: "%.1f", duration))s - File: \(result.path)")
+        // Notify completion with duration and file URL
+        onRecordingFinished?(duration, result)
         return result
     }
 
@@ -188,12 +187,47 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
     }
 
     public func recordingOutputDidFinishRecording(_ output: SCRecordingOutput) {
-        print("✅ ScreenCaptureEngine: Recording finished successfully")
+        print("✅ Recording finished (system stop button clicked)")
 
-        // Resume continuation if waiting
-        if let continuation = recordingFinishedContinuation {
-            recordingFinishedContinuation = nil
-            continuation.resume()
+        // Mark as not capturing
+        isCapturing = false
+
+        // Calculate recording duration
+        let duration = recordingStartTime.map { Date().timeIntervalSince($0) } ?? 0
+
+        // Get the output file URL from SCRecordingOutput
+        guard let fileURL = outputURL else {
+            print("❌ No output URL available")
+            onError?(CaptureError.configurationFailed)
+            return
+        }
+
+        // Verify file exists and has content
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            print("❌ Output file does not exist!")
+            onError?(CaptureError.configurationFailed)
+            return
+        }
+
+        // Stop stream
+        Task {
+            do {
+                try await stream?.stopCapture()
+                print("✅ Stream stopped")
+            } catch {
+                print("❌ Error stopping stream: \(error)")
+            }
+
+            // Cleanup
+            self.stream = nil
+            self.recordingOutput = nil
+            self.outputURL = nil
+            self.recordingStartTime = nil
+
+            // Notify completion with duration and file URL
+            await MainActor.run {
+                self.onRecordingFinished?(duration, fileURL)
+            }
         }
     }
 

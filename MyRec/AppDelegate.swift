@@ -319,8 +319,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         captureEngine?.onRecordingStarted = { [weak self] in
             self?.handleRecordingStarted()
         }
-        captureEngine?.onRecordingFinished = { [weak self] duration in
-            self?.handleRecordingFinished(duration: duration)
+        captureEngine?.onRecordingFinished = { [weak self] duration, fileURL in
+            self?.handleRecordingFinished(duration: duration, fileURL: fileURL)
         }
         captureEngine?.onError = { [weak self] error in
             self?.handleCaptureError(error)
@@ -421,10 +421,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func handleRecordingFinished(duration: TimeInterval) {
-        print("✅ AppDelegate: Recording finished - Duration: \(String(format: "%.1f", duration))s")
-        // Notify status bar of completion
-        DispatchQueue.main.async {
+    private func handleRecordingFinished(duration: TimeInterval, fileURL: URL) {
+        Task { @MainActor in
+            // Use FileManagerService to save file permanently with actual recording settings
+            print("✅ Processing completed recording...")
+            let metadata = try await FileManagerService.shared.saveVideoFile(
+                from: fileURL,
+                resolution: recordingResolution ?? .fullHD,
+                frameRate: recordingFrameRate ?? .fps30
+            )
+
+            print("✅ Recording saved: \(metadata.filename)")
+
+            // Notify that a new recording has been saved
+            NotificationCenter.default.post(
+                name: .recordingSaved,
+                object: nil,
+                userInfo: ["metadata": metadata]
+            )
+
+            // Clean up temp file
+            FileManagerService.shared.cleanupTempFile(fileURL)
+
+            // Show preview
+            openPreviewDialog(with: metadata)
+
+            // Reset state
+            resetRecordingState()
+
+            // Notify status bar to return to idle state
+            NotificationCenter.default.post(
+                name: .recordingStateChanged,
+                object: RecordingState.idle
+            )
+
+            // Also notify status bar of completion
             NotificationCenter.default.post(
                 name: .recordingFinished,
                 object: nil,
