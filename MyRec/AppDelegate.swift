@@ -24,6 +24,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Recording Engine
     private var captureEngine: ScreenCaptureEngine?
     private var recordingStartTime: Date?
+    private var recordingResolution: Resolution?
+    private var recordingFrameRate: FrameRate?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Show dock icon for window-based app
@@ -300,7 +302,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let audioEnabled = SettingsManager.shared.defaultSettings.audioEnabled
         let microphoneEnabled = SettingsManager.shared.defaultSettings.microphoneEnabled
 
+        // Store recording settings for metadata
+        self.recordingResolution = resolution
+        self.recordingFrameRate = frameRate
+
         print("📹 Starting capture...")
+        print("  📊 Stored for metadata - Resolution: \(resolution.displayName), Frame Rate: \(frameRate.displayName)")
         print("  Region: \(region)")
         print("  Resolution: \(resolution.displayName)")
         print("  Frame Rate: \(frameRate.displayName)")
@@ -346,8 +353,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 print("✅ AppDelegate: Recording stopped successfully")
                 print("📁 Temp file: \(tempVideoURL.path)")
 
-                // Use FileManagerService to save file permanently
-                let metadata = try await FileManagerService.shared.saveVideoFile(from: tempVideoURL)
+                // Use FileManagerService to save file permanently with actual recording settings
+                print("📊 Passing metadata - Resolution: \(recordingResolution?.displayName ?? "nil"), Frame Rate: \(recordingFrameRate?.displayName ?? "nil")")
+                let metadata = try await FileManagerService.shared.saveVideoFile(
+                    from: tempVideoURL,
+                    resolution: recordingResolution ?? .fullHD,
+                    frameRate: recordingFrameRate ?? .fps30
+                )
 
                 print("✅ AppDelegate: File saved permanently")
                 print("  Final location: \(metadata.fileURL.path)")
@@ -393,6 +405,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func resetRecordingState() {
         captureEngine = nil
         recordingStartTime = nil
+        recordingResolution = nil
+        recordingFrameRate = nil
         print("🔄 AppDelegate: Recording state reset")
     }
 

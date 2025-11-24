@@ -65,7 +65,7 @@ public class ScreenCaptureEngine: NSObject, SCStreamDelegate, SCRecordingOutputD
         // Configure SCRecordingOutput (macOS 15+)
         let recordingConfig = SCRecordingOutputConfiguration()
         recordingConfig.outputURL = outputURL
-        recordingConfig.videoCodecType = .h264
+        recordingConfig.videoCodecType = .hevc  // H.265 for better compression (25-50% smaller files)
         // Note: Audio codec is automatically AAC - no need to set explicitly
 
         // Create recording output with delegate

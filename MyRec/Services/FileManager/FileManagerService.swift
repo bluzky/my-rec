@@ -25,12 +25,16 @@ class FileManagerService {
     // MARK: - Public Interface
 
     /// Move a temporary video file to final location with metadata extraction
-    /// - Parameter tempURL: Temporary video file URL
+    /// - Parameters:
+    ///   - tempURL: Temporary video file URL
+    ///   - resolution: Actual resolution used during recording
+    ///   - frameRate: Actual frame rate used during recording
     /// - Returns: VideoMetadata with file information
-    func saveVideoFile(from tempURL: URL) async throws -> VideoMetadata {
+    func saveVideoFile(from tempURL: URL, resolution: Resolution, frameRate: FrameRate) async throws -> VideoMetadata {
         print("📁 FileManagerService: Starting file save process...")
         print("  Source: \(tempURL.path)")
         print("  Destination: \(saveDirectory.path)")
+        print("  📊 Received metadata - Resolution: \(resolution.displayName), Frame Rate: \(frameRate.displayName)")
 
         // Verify temp file exists and has content
         guard fileManager.fileExists(atPath: tempURL.path) else {
@@ -56,8 +60,8 @@ class FileManagerService {
         try moveFile(from: tempURL, to: finalURL)
         print("✅ File moved successfully to: \(finalURL.path)")
 
-        // Extract metadata
-        let metadata = try await extractMetadata(from: finalURL)
+        // Extract metadata with actual recording settings
+        let metadata = try await extractMetadata(from: finalURL, resolution: resolution, frameRate: frameRate)
         print("✅ Metadata extracted - Duration: \(String(format: "%.1f", metadata.duration))s, Size: \(formatFileSize(metadata.fileSize))")
 
         // Open Finder to show the file
@@ -154,9 +158,13 @@ class FileManagerService {
     }
 
     /// Extract metadata from video file using AVAsset
-    /// - Parameter url: Video file URL
+    /// - Parameters:
+    ///   - url: Video file URL
+    ///   - resolution: Optional resolution used during recording (if nil, will extract from file)
+    ///   - frameRate: Optional frame rate used during recording (if nil, will extract from file)
     /// - Returns: VideoMetadata with extracted information
-    private func extractMetadata(from url: URL) async throws -> VideoMetadata {
+    private func extractMetadata(from url: URL, resolution: Resolution? = nil, frameRate: FrameRate? = nil) async throws -> VideoMetadata {
+        print("📊 extractMetadata - Received resolution: \(resolution?.displayName ?? "nil"), frameRate: \(frameRate?.displayName ?? "nil")")
         let asset = AVURLAsset(url: url)
 
         // Load asset properties and verify they loaded successfully
@@ -173,38 +181,46 @@ class FileManagerService {
             videoTracks = tracks
         }
 
-        var resolution: Resolution = .fullHD // Default
-        var naturalSize = CGSize(width: resolution.width, height: resolution.height)
-        var frameRate: FrameRate = .fps30 // Default
+        // Use provided resolution and frame rate, or extract from file if not provided
+        var finalResolution: Resolution = resolution ?? .fullHD
+        var finalFrameRate: FrameRate = frameRate ?? .fps30
+        var naturalSize = CGSize(width: finalResolution.width, height: finalResolution.height)
 
         if let videoTrack = videoTracks.first {
-            // Get natural size
+            // Get natural size (always extract actual dimensions)
             let rawSize = try await videoTrack.load(.naturalSize)
             let transform = try await videoTrack.load(.preferredTransform)
             let transformedSize = rawSize.applying(transform)
             naturalSize = CGSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
 
-            let width = Int(naturalSize.width.rounded())
-            let height = Int(naturalSize.height.rounded())
+            // Only extract resolution and frame rate if not provided
+            if resolution == nil {
+                let width = Int(naturalSize.width.rounded())
+                let height = Int(naturalSize.height.rounded())
 
-            // Find matching resolution or use closest
-            if let closestResolution = Resolution.allCases.min(by: { res1, res2 in
-                let diff1 = abs(res1.width - width) + abs(res1.height - height)
-                let diff2 = abs(res2.width - width) + abs(res2.height - height)
-                return diff1 < diff2
-            }) {
-                resolution = closestResolution
+                // Find matching resolution or use closest
+                if let closestResolution = Resolution.allCases.min(by: { res1, res2 in
+                    let diff1 = abs(res1.width - width) + abs(res1.height - height)
+                    let diff2 = abs(res2.width - width) + abs(res2.height - height)
+                    return diff1 < diff2
+                }) {
+                    finalResolution = closestResolution
+                }
             }
 
-            // Get nominal frame rate
-            let nominalFrameRate = try await videoTrack.load(.nominalFrameRate)
-            if let closestFrameRate = FrameRate.allCases.min(by: { abs($0.value - Int(nominalFrameRate)) < abs($1.value - Int(nominalFrameRate)) }) {
-                frameRate = closestFrameRate
+            if frameRate == nil {
+                // Get nominal frame rate
+                let nominalFrameRate = try await videoTrack.load(.nominalFrameRate)
+                if let closestFrameRate = FrameRate.allCases.min(by: { abs($0.value - Int(nominalFrameRate)) < abs($1.value - Int(nominalFrameRate)) }) {
+                    finalFrameRate = closestFrameRate
+                }
             }
         }
 
         // Get duration in seconds using new API
         let duration = try await asset.load(.duration).seconds
+
+        print("📊 extractMetadata - Final values - Resolution: \(finalResolution.displayName), Frame Rate: \(finalFrameRate.displayName)")
 
         // Generate thumbnail asynchronously
         // TODO: Implement ThumbnailGenerator class
@@ -220,8 +236,8 @@ class FileManagerService {
             filename: url.lastPathComponent,
             fileURL: url,
             duration: duration,
-            resolution: resolution,
-            frameRate: frameRate,
+            resolution: finalResolution,
+            frameRate: finalFrameRate,
             fileSize: fileSize,
             createdDate: createdDate,
             thumbnail: thumbnail,
