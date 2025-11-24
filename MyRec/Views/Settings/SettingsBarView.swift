@@ -8,6 +8,7 @@ struct SettingsBarView: View {
     // MARK: - Properties
 
     @ObservedObject var settingsManager: SettingsManager
+    @ObservedObject var viewModel: RegionSelectionViewModel
     let regionSize: CGSize
     let onClose: () -> Void
     let onRecord: () -> Void
@@ -37,21 +38,27 @@ struct SettingsBarView: View {
             HStack(spacing: 8) {
                 CaptureButton(
                     icon: "rectangle.fill",
-                    isSelected: false,
+                    isSelected: viewModel.selectionMode == .screen,
                     help: "Select Entire Screen"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .screen)
+                }
 
                 CaptureButton(
                     icon: "macwindow",
-                    isSelected: false,
+                    isSelected: viewModel.selectionMode == .window,
                     help: "Select Window"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .window)
+                }
 
                 CaptureButton(
                     icon: "rectangle.dashed",
-                    isSelected: true,
+                    isSelected: viewModel.selectionMode == .region,
                     help: "Select Region"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .region)
+                }
             }
             .padding(.horizontal, 8)
 
@@ -403,6 +410,7 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
+                        viewModel: RegionSelectionViewModel(screenBounds: CGRect(x: 0, y: 0, width: 1920, height: 1080)),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},
@@ -421,6 +429,7 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
+                        viewModel: RegionSelectionViewModel(screenBounds: CGRect(x: 0, y: 0, width: 1920, height: 1080)),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},
