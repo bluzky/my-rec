@@ -38,6 +38,7 @@ public class RegionSelectionWindow: NSWindow {
         self.level = .floating // Float above other windows
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.ignoresMouseEvents = false
+        self.hasShadow = false // Disable shadow to prevent ghost artifacts
 
         // Setup SwiftUI view
         setupContentView()
@@ -106,6 +107,10 @@ public class RegionSelectionWindow: NSWindow {
                 // During recording, allow mouse events to pass through
                 self?.ignoresMouseEvents = true
                 print("🖱 Window now ignores mouse events - user can interact with apps")
+
+                // Force window invalidation to clear ghost artifacts
+                self?.invalidateShadow()
+                self?.contentView?.setNeedsDisplay(self?.contentView?.bounds ?? .zero)
             case .idle, .paused:
                 // Not recording, capture mouse events again
                 self?.ignoresMouseEvents = false
