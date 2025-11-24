@@ -42,11 +42,13 @@ struct RegionSelectionView: View {
                 .transition(.opacity)
             }
 
-            // Countdown overlay
-            if showCountdown {
+            // Countdown overlay - positioned at center of selected region
+            if showCountdown, let selectedRegion = viewModel.selectedRegion {
+                let swiftUIRegion = convertScreenToSwiftUICoordinates(selectedRegion)
                 CountdownOverlay {
                     handleCountdownComplete()
                 }
+                .position(x: swiftUIRegion.midX, y: swiftUIRegion.midY)
                 .transition(.opacity)
             }
         }
@@ -387,13 +389,14 @@ struct RegionSelectionGestureModifier: ViewModifier {
                 // Only allow tap actions when no region is selected
                 guard viewModel.selectedRegion == nil else { return }
 
-                // Check if tapping on a hovered window
+                // Check if tapping on a hovered window (works in both window and region mode)
                 if viewModel.isHoveringOverWindow {
                     viewModel.selectHoveredWindow()
-                } else {
-                    // If no selection and no window hover, clicking selects the full screen
+                } else if viewModel.selectionMode == .screen {
+                    // In screen mode only: clicking selects the full screen
                     viewModel.selectedRegion = viewModel.screenBounds
                 }
+                // In region mode: clicking on empty space does nothing (user must drag)
             }
     }
 }

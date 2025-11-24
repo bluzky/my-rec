@@ -271,8 +271,8 @@ public class RegionSelectionViewModel: ObservableObject {
             return
         }
 
-        // Only detect windows in window mode
-        guard selectionMode == .window else {
+        // Only detect windows in window mode or region mode
+        guard selectionMode == .window || selectionMode == .region else {
             hoveredWindow = nil
             isHoveringOverWindow = false
             return
@@ -285,8 +285,13 @@ public class RegionSelectionViewModel: ObservableObject {
             return
         }
 
-        // In window mode, allow window detection even if a region is selected
-        // (user can reselect a different window)
+        // Don't detect windows if a region is already selected
+        guard selectedRegion == nil else {
+            hoveredWindow = nil
+            isHoveringOverWindow = false
+            return
+        }
+
         let window = windowDetectionService.getWindowAt(point: location)
 
         if let window = window, window.isUserWindow {
@@ -342,7 +347,7 @@ public class RegionSelectionViewModel: ObservableObject {
             // Clear selection and enter manual region mode
             selectedRegion = nil
             clearWindowHover()
-            print("✏️ Switched to region mode - drag to select region")
+            print("✏️ Switched to region mode - click a window or drag to select region")
         }
     }
 

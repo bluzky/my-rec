@@ -74,20 +74,12 @@ private struct CountdownPhase {
     /// Calculate scale based on progress (0.0 to 1.0)
     var scale: CGFloat {
         if progress < 0.4 {
-            // Scale up with spring effect
+            // Scale up from very small to large
             let t = progress / 0.4
-            return 0.5 + (t * 0.7) // 0.5 → 1.2
-        } else if progress < 0.6 {
-            // Settle back
-            let t = (progress - 0.4) / 0.2
-            return 1.2 - (t * 0.2) // 1.2 → 1.0
-        } else if progress < 0.9 {
-            // Hold steady
-            return 1.0
+            return 0.3 + (t * 0.7) // 0.3 → 1.0
         } else {
-            // Slight shrink before fade
-            let t = (progress - 0.9) / 0.1
-            return 1.0 - (t * 0.1) // 1.0 → 0.9
+            // Hold at full size, never scale back down
+            return 1.0
         }
     }
 
@@ -117,12 +109,12 @@ private struct CountdownNumberView: View {
             let phase = CountdownPhase(number: number, progress: progress, isVisible: true)
 
             Text("\(number)")
-                .font(.system(size: 140, weight: .black, design: .rounded))
+                .font(.system(size: 120, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .scaleEffect(phase.scale)
                 .opacity(phase.opacity)
                 .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-                .animation(.spring(response: 0.4, dampingFraction: 0.6), value: phase.scale)
+                .animation(.easeOut(duration: 0.4), value: phase.scale)
                 .animation(.easeOut(duration: 0.2), value: phase.opacity)
         }
     }
