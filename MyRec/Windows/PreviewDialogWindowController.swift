@@ -1,4 +1,3 @@
-//
 //  PreviewDialogWindowController.swift
 //  MyRec
 //

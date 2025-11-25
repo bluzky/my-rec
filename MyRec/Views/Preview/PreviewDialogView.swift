@@ -24,7 +24,8 @@ struct PreviewDialogView: View {
 
                     VStack {
                         Spacer(minLength: 0)
-                        VideoPlayer(player: player)
+                        // Use an NSView-backed player to avoid the VideoPlayerView demangling crash
+                        AVPlayerContainerView(player: player)
                             .frame(width: targetWidth, height: targetHeight)
                             .onAppear {
                                 print("🎬 Video player appeared - ready to play")
@@ -89,5 +90,25 @@ struct PreviewDialogView: View {
 private extension PreviewDialogView {
     var videoAspectRatio: CGFloat {
         viewModel.recording.aspectRatio
+    }
+}
+
+// MARK: - NSView-backed player
+
+/// Minimal wrapper around `AVPlayerView` to avoid `VideoPlayerView` demangling crashes
+struct AVPlayerContainerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .floating
+        view.showsFullScreenToggleButton = true
+        view.videoGravity = .resizeAspect
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        nsView.player = player
     }
 }

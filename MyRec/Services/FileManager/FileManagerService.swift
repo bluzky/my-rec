@@ -56,11 +56,6 @@ class FileManagerService {
         // Extract metadata with actual recording settings
         let metadata = try await extractMetadata(from: finalURL, resolution: resolution, frameRate: frameRate)
 
-        // Open Finder to show the file in background to avoid blocking
-        Task.detached { [weak self] in
-            await self?.showFileInFinder(finalURL)
-        }
-
         return metadata
     }
 
@@ -248,15 +243,6 @@ class FileManagerService {
             thumbnail: thumbnail,
             naturalSize: naturalSize
         )
-    }
-
-    /// Open Finder to show file
-    /// - Parameter url: File to show in Finder
-    private func showFileInFinder(_ url: URL) async {
-        // Switch to main thread for NSWorkspace
-        _ = await MainActor.run {
-            NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
-        }
     }
 
     /// Format file size for human readable display
