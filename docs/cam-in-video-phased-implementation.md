@@ -665,6 +665,7 @@ public class ManualRecordingEngine: NSObject, SCStreamDelegate, SCStreamOutput, 
 
     // Composition
     private var compositor: VideoCompositor?
+    private var pixelBufferPool: CVPixelBufferPool?  // Reuse buffers for efficiency
 
     // Audio settings
     private var captureAudio: Bool = false
@@ -710,6 +711,9 @@ public class ManualRecordingEngine: NSObject, SCStreamDelegate, SCStreamOutput, 
         // Setup stream
         let streamSetup = try await setupStream(resolution: resolution, frameRate: frameRate)
         stream = streamSetup.stream
+
+        // Setup pixel buffer pool for composition (CRITICAL for performance)
+        try setupPixelBufferPool(width: streamSetup.outputSize.width, height: streamSetup.outputSize.height)
 
         // Setup AVAssetWriter
         try setupAssetWriter(
@@ -794,30 +798,62 @@ public class ManualRecordingEngine: NSObject, SCStreamDelegate, SCStreamOutput, 
 
     // MARK: - Private Methods
 
+    private func setupPixelBufferPool(width: Int, height: Int) throws {
+        let poolAttributes: [String: Any] = [
+            kCVPixelBufferPoolMinimumBufferCountKey as String: 3  // Keep 3 buffers in pool
+        ]
+
+        let bufferAttributes: [String: Any] = [
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:]  // Enable IOSurface for GPU efficiency
+        ]
+
+        let status = CVPixelBufferPoolCreate(
+            kCFAllocatorDefault,
+            poolAttributes as CFDictionary,
+            bufferAttributes as CFDictionary,
+            &pixelBufferPool
+        )
+
+        guard status == kCVReturnSuccess else {
+            throw CaptureError.configurationFailed
+        }
+
+        print("✅ Pixel buffer pool created (\(width)x\(height))")
+    }
+
     private func setupCamera() throws {
         guard let device = AVCaptureDevice.default(for: .video) else {
             throw CameraError.noDeviceAvailable
         }
 
-        cameraSession = AVCaptureSession()
-        cameraSession?.sessionPreset = .hd1920x1080
+        let session = AVCaptureSession()
+        session.sessionPreset = .hd1920x1080
 
+        // Add camera input
         let input = try AVCaptureDeviceInput(device: device)
-        guard let session = cameraSession, session.canAddInput(input) else {
+        guard session.canAddInput(input) else {
             throw CameraError.configurationFailed
         }
         session.addInput(input)
 
-        cameraOutput = AVCaptureVideoDataOutput()
-        cameraOutput?.setSampleBufferDelegate(self, queue: cameraQueue)
-        cameraOutput?.videoSettings = [
+        // Add video output with safe unwrapping
+        let output = AVCaptureVideoDataOutput()
+        output.setSampleBufferDelegate(self, queue: cameraQueue)
+        output.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
         ]
 
-        guard session.canAddOutput(cameraOutput!) else {
+        guard session.canAddOutput(output) else {
             throw CameraError.configurationFailed
         }
-        session.addOutput(cameraOutput!)
+        session.addOutput(output)
+
+        // Only assign to properties after successful configuration
+        cameraSession = session
+        cameraOutput = output
 
         print("✅ Camera session configured")
     }
@@ -880,40 +916,44 @@ public class ManualRecordingEngine: NSObject, SCStreamDelegate, SCStreamOutput, 
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         // If camera enabled, composite
-        if let cameraBuffer = latestCameraBuffer, let compositor = compositor {
-            // Create output buffer
+        if let cameraBuffer = latestCameraBuffer, let compositor = compositor, let pool = pixelBufferPool {
+            // Get output buffer from pool (EFFICIENT - reuses buffers!)
             var outputBuffer: CVPixelBuffer?
-            let attrs = [
-                kCVPixelBufferWidthKey: CVPixelBufferGetWidth(imageBuffer),
-                kCVPixelBufferHeightKey: CVPixelBufferGetHeight(imageBuffer),
-                kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA
-            ] as CFDictionary
+            let status = CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &outputBuffer)
 
-            CVPixelBufferCreate(nil, CVPixelBufferGetWidth(imageBuffer), CVPixelBufferGetHeight(imageBuffer), kCVPixelFormatType_32BGRA, attrs, &outputBuffer)
+            guard status == kCVReturnSuccess, let output = outputBuffer else {
+                print("⚠️ Failed to get pixel buffer from pool")
+                videoInput.append(sampleBuffer)  // Fallback: use original
+                return
+            }
 
-            if let output = outputBuffer {
-                if compositor.composite(screen: imageBuffer, camera: cameraBuffer, outputBuffer: output) {
-                    // Create new sample buffer with composited frame
-                    var compositedBuffer: CMSampleBuffer?
-                    var timingInfo = CMSampleTimingInfo()
-                    timingInfo.presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-                    timingInfo.duration = CMSampleBufferGetDuration(sampleBuffer)
+            if compositor.composite(screen: imageBuffer, camera: cameraBuffer, outputBuffer: output) {
+                // Create new sample buffer with composited frame
+                var compositedBuffer: CMSampleBuffer?
+                var timingInfo = CMSampleTimingInfo()
+                timingInfo.presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                timingInfo.duration = CMSampleBufferGetDuration(sampleBuffer)
+                timingInfo.decodeTimeStamp = CMSampleBufferGetDecodeTimeStamp(sampleBuffer)
 
-                    CMSampleBufferCreateForImageBuffer(
-                        allocator: kCFAllocatorDefault,
-                        imageBuffer: output,
-                        dataReady: true,
-                        makeDataReadyCallback: nil,
-                        refcon: nil,
-                        formatDescription: CMSampleBufferGetFormatDescription(sampleBuffer)!,
-                        sampleTiming: &timingInfo,
-                        sampleBufferOut: &compositedBuffer
-                    )
+                guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else {
+                    videoInput.append(sampleBuffer)
+                    return
+                }
 
-                    if let composited = compositedBuffer {
-                        videoInput.append(composited)
-                        return
-                    }
+                let createStatus = CMSampleBufferCreateForImageBuffer(
+                    allocator: kCFAllocatorDefault,
+                    imageBuffer: output,
+                    dataReady: true,
+                    makeDataReadyCallback: nil,
+                    refcon: nil,
+                    formatDescription: formatDescription,
+                    sampleTiming: &timingInfo,
+                    sampleBufferOut: &compositedBuffer
+                )
+
+                if createStatus == noErr, let composited = compositedBuffer {
+                    videoInput.append(composited)
+                    return
                 }
             }
         }
@@ -952,6 +992,7 @@ public class ManualRecordingEngine: NSObject, SCStreamDelegate, SCStreamOutput, 
         cameraOutput = nil
         latestCameraBuffer = nil
         compositor = nil
+        pixelBufferPool = nil  // Release buffer pool
         outputURL = nil
         recordingStartTime = nil
     }
