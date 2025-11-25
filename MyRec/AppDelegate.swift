@@ -215,6 +215,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func openPreviewDialog(with metadata: VideoMetadata) {
         print("🎬 Opening preview dialog for: \(metadata.filename)")
+
+        // Close existing preview dialog if one is open
+        if let existingDialog = previewDialogWindowController {
+            print("⚠️ Closing existing preview dialog before opening new one")
+            existingDialog.close()
+            previewDialogWindowController = nil
+        }
+
         // Create new preview dialog window controller with real video
         previewDialogWindowController = PreviewDialogWindowController(recording: metadata)
         previewDialogWindowController?.show()
@@ -341,6 +349,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopCapture() {
         Task { @MainActor in
             do {
+                // Guard against duplicate stop calls
+                guard captureEngine != nil else {
+                    print("⚠️ AppDelegate: Stop capture called but no active capture engine - ignoring")
+                    return
+                }
+
                 print("🔄 AppDelegate: Stopping capture...")
 
                 // Stop capture + get output file
@@ -382,15 +396,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 openPreviewDialog(with: metadata)
 
                 // Reset state
-                let totalFrames = resetRecordingState()
+                resetRecordingState()
 
-                print("📊 AppDelegate: Recording summary: \(totalFrames) frames captured")
                 print("🎉 Day 23 Success: Real video preview working!")
 
             } catch {
                 print("❌ AppDelegate: Failed to stop recording: \(error)")
                 // Reset state on error
-                _ = resetRecordingState()
+                resetRecordingState()
 
                 // Only show error dialog for critical failures
                 let errorMessage = error.localizedDescription
@@ -401,7 +414,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @discardableResult
     private func resetRecordingState() {
         captureEngine = nil
         recordingStartTime = nil
@@ -449,13 +461,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Reset state
             resetRecordingState()
 
-            // Notify status bar to return to idle state
-            NotificationCenter.default.post(
-                name: .recordingStateChanged,
-                object: RecordingState.idle
-            )
-
-            // Also notify status bar of completion
+            // Notify status bar of completion
             NotificationCenter.default.post(
                 name: .recordingFinished,
                 object: nil,

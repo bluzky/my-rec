@@ -21,7 +21,7 @@ class HomePageWindowController: NSWindowController {
         // Create the window
         let window = NSWindow(contentViewController: hostingController)
         window.title = "MyRec"
-        window.setContentSize(NSSize(width: 560, height: 600))
+        window.setContentSize(NSSize(width: 480, height: 600))
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.isReleasedWhenClosed = false // Keep window in memory
         window.center()

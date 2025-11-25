@@ -24,7 +24,8 @@ struct PreviewDialogView: View {
 
                     VStack {
                         Spacer(minLength: 0)
-                        VideoPlayer(player: player)
+                        // Use an NSView-backed player to avoid the VideoPlayerView demangling crash
+                        AVPlayerContainerView(player: player)
                             .frame(width: targetWidth, height: targetHeight)
                             .onAppear {
                                 print("🎬 Video player appeared - ready to play")
@@ -89,5 +90,31 @@ struct PreviewDialogView: View {
 private extension PreviewDialogView {
     var videoAspectRatio: CGFloat {
         viewModel.recording.aspectRatio
+    }
+}
+
+// MARK: - NSView-backed player
+
+/// Minimal wrapper around `AVPlayerView` to avoid `VideoPlayerView` demangling crashes.
+///
+/// SwiftUI's `VideoPlayer` (and its underlying `VideoPlayerView`) has known issues on macOS 14.x and 15.x
+/// where, in certain build configurations (especially Release builds or when using LTO), the app can crash
+/// due to symbol demangling errors. See: https://developer.apple.com/forums/thread/733834
+/// This wrapper uses an `NSViewRepresentable` to embed an `AVPlayerView` directly, avoiding the problematic
+/// SwiftUI component and ensuring stable video playback.
+struct AVPlayerContainerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .floating
+        view.showsFullScreenToggleButton = true
+        view.videoGravity = .resizeAspect
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ nsView: AVPlayerView, context: Context) {
+        nsView.player = player
     }
 }
