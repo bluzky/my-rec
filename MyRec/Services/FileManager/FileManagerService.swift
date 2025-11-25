@@ -31,11 +31,6 @@ class FileManagerService {
     ///   - frameRate: Actual frame rate used during recording
     /// - Returns: VideoMetadata with file information
     func saveVideoFile(from tempURL: URL, resolution: Resolution, frameRate: FrameRate) async throws -> VideoMetadata {
-        print("📁 FileManagerService: Starting file save process...")
-        print("  Source: \(tempURL.path)")
-        print("  Destination: \(saveDirectory.path)")
-        print("  📊 Received metadata - Resolution: \(resolution.displayName), Frame Rate: \(frameRate.displayName)")
-
         // Verify temp file exists and has content
         guard fileManager.fileExists(atPath: tempURL.path) else {
             throw FileError.sourceFileNotFound
@@ -46,27 +41,25 @@ class FileManagerService {
             throw FileError.sourceFileCorrupted
         }
 
-        print("✅ Source file verified - Size: \(formatFileSize(sourceSize))")
-
         // Generate unique filename
         let finalURL = generateUniqueFilename()
-        print("📝 Generated filename: \(finalURL.lastPathComponent)")
 
         // Ensure save directory exists
         try ensureDirectoryExists(saveDirectory)
-        print("📁 Save directory ready: \(saveDirectory.path)")
 
         // Move file atomically
         try moveFile(from: tempURL, to: finalURL)
-        print("✅ File moved successfully to: \(finalURL.path)")
+
+        // Wait a bit for the file to be fully written
+        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
         // Extract metadata with actual recording settings
         let metadata = try await extractMetadata(from: finalURL, resolution: resolution, frameRate: frameRate)
-        print("✅ Metadata extracted - Duration: \(String(format: "%.1f", metadata.duration))s, Size: \(formatFileSize(metadata.fileSize))")
 
-        // Open Finder to show the file
-        await showFileInFinder(finalURL)
-        print("🗂 Finder opened to show saved file")
+        // Open Finder to show the file in background to avoid blocking
+        Task.detached { [weak self] in
+            await self?.showFileInFinder(finalURL)
+        }
 
         return metadata
     }
@@ -77,19 +70,15 @@ class FileManagerService {
         do {
             if fileManager.fileExists(atPath: url.path) {
                 try fileManager.removeItem(at: url)
-                print("🗑 Temp file cleaned up: \(url.lastPathComponent)")
             }
         } catch {
-            print("⚠️ Warning: Failed to cleanup temp file: \(error)")
+            // Silently handle cleanup failures
         }
     }
 
     /// Get list of saved recordings from configured save directory
     /// - Returns: Array of VideoMetadata for all .mp4 files
     func getSavedRecordings() async throws -> [VideoMetadata] {
-        print("📂 FileManagerService: Scanning for saved recordings...")
-        print("  Location: \(saveDirectory.path)")
-
         let files = try fileManager.contentsOfDirectory(
             at: saveDirectory,
             includingPropertiesForKeys: [.fileSizeKey, .creationDateKey],
@@ -97,7 +86,6 @@ class FileManagerService {
         )
 
         let mp4Files = files.filter { $0.pathExtension.lowercased() == "mp4" }
-        print("📂 Found \(mp4Files.count) MP4 files")
 
         var recordings: [VideoMetadata] = []
         for file in mp4Files {
@@ -105,13 +93,12 @@ class FileManagerService {
                 let metadata = try await extractMetadata(from: file)
                 recordings.append(metadata)
             } catch {
-                print("⚠️ Warning: Failed to extract metadata from \(file.lastPathComponent): \(error)")
+                // Skip files with metadata extraction errors
             }
         }
 
         // Sort by creation date (newest first)
         recordings.sort { $0.createdDate > $1.createdDate }
-        print("✅ Loaded \(recordings.count) recordings")
 
         return recordings
     }
@@ -138,7 +125,6 @@ class FileManagerService {
                 withIntermediateDirectories: true,
                 attributes: nil
             )
-            print("📁 Created directory: \(url.path)")
         }
     }
 
@@ -150,7 +136,6 @@ class FileManagerService {
         // Remove destination if it exists (shouldn't happen with unique timestamps)
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
-            print("⚠️ Removed existing file: \(destination.lastPathComponent)")
         }
 
         // Move file atomically
@@ -164,15 +149,37 @@ class FileManagerService {
     ///   - frameRate: Optional frame rate used during recording (if nil, will extract from file)
     /// - Returns: VideoMetadata with extracted information
     private func extractMetadata(from url: URL, resolution: Resolution? = nil, frameRate: FrameRate? = nil) async throws -> VideoMetadata {
-        print("📊 extractMetadata - Received resolution: \(resolution?.displayName ?? "nil"), frameRate: \(frameRate?.displayName ?? "nil")")
-        let asset = AVURLAsset(url: url)
+        // Verify file exists and is not empty before extracting metadata
+        guard fileManager.fileExists(atPath: url.path) else {
+            throw FileError.sourceFileNotFound
+        }
 
-        // Load asset properties and verify they loaded successfully
-        _ = try await asset.load(.duration, .tracks)
-
-        // Get file attributes
         let attributes = try fileManager.attributesOfItem(atPath: url.path)
         let fileSize = attributes[.size] as? Int64 ?? 0
+        guard fileSize > 0 else {
+            throw FileError.sourceFileCorrupted
+        }
+
+        let asset = AVURLAsset(url: url)
+
+        // Load asset properties with timeout to prevent hanging
+        let loaded = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+            asset.loadValuesAsynchronously(forKeys: ["duration", "tracks"]) {
+                var error: NSError?
+                if asset.statusOfValue(forKey: "duration", error: &error) == .loaded &&
+                   asset.statusOfValue(forKey: "tracks", error: &error) == .loaded {
+                    continuation.resume(returning: true)
+                } else {
+                    continuation.resume(throwing: error ?? FileError.metadataExtractionFailed)
+                }
+            }
+        }
+
+        guard loaded else {
+            throw FileError.metadataExtractionFailed
+        }
+
+        // Get file attributes (already fetched above)
         let createdDate = attributes[.creationDate] as? Date ?? Date()
 
         // Extract video properties
@@ -217,10 +224,8 @@ class FileManagerService {
             }
         }
 
-        // Get duration in seconds using new API
-        let duration = try await asset.load(.duration).seconds
-
-        print("📊 extractMetadata - Final values - Resolution: \(finalResolution.displayName), Frame Rate: \(finalFrameRate.displayName)")
+        // Get duration in seconds
+        let duration = asset.duration.seconds
 
         // Generate thumbnail asynchronously
         // TODO: Implement ThumbnailGenerator class
