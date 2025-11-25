@@ -211,7 +211,6 @@ class FileManagerService {
             }
         }
 
-        // Get file attributes (already fetched above)
         let createdDate = attributes[.creationDate] as? Date ?? Date()
 
         // Extract video properties
