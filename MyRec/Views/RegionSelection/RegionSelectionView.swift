@@ -10,6 +10,7 @@ struct RegionSelectionView: View {
     let onClose: () -> Void
 
     @State private var showCountdown = false
+    @State private var isRecording = false
     @State private var overlayOpacity: Double = 0.0
 
     init(viewModel: RegionSelectionViewModel, onClose: @escaping () -> Void = {}) {
@@ -22,12 +23,14 @@ struct RegionSelectionView: View {
             // Overlay content (default box, window hover, or selection)
             RegionOverlayContent(
                 viewModel: viewModel,
-                overlayOpacity: overlayOpacity,
+                overlayOpacity: isRecording ? 0.0 : overlayOpacity,
+                showHandles: !showCountdown && !isRecording,
+                showDimensionLabel: !isRecording,
                 convertToSwiftUI: convertScreenToSwiftUICoordinates
             )
 
             // Settings bar at the bottom center
-            if !showCountdown {
+            if !showCountdown && !isRecording {
                 SettingsBarContainer(
                     viewModel: viewModel,
                     onClose: {
@@ -39,11 +42,13 @@ struct RegionSelectionView: View {
                 .transition(.opacity)
             }
 
-            // Countdown overlay
-            if showCountdown {
+            // Countdown overlay - positioned at center of selected region
+            if showCountdown, let selectedRegion = viewModel.selectedRegion {
+                let swiftUIRegion = convertScreenToSwiftUICoordinates(selectedRegion)
                 CountdownOverlay {
                     handleCountdownComplete()
                 }
+                .position(x: swiftUIRegion.midX, y: swiftUIRegion.midY)
                 .transition(.opacity)
             }
         }
@@ -59,6 +64,13 @@ struct RegionSelectionView: View {
             if !isHovering {
                 viewModel.clearWindowHover()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .recordingFinished)) { _ in
+            // Close window when recording finishes
+            print("📹 Recording finished - closing overlay window")
+            self.viewModel.isRecording = false
+            self.viewModel.reset()
+            self.onClose()
         }
         .modifier(RegionSelectionGestureModifier(viewModel: viewModel))
         // Note: Escape key handling will be added at the window level for macOS 12 compatibility
@@ -87,14 +99,20 @@ struct RegionSelectionView: View {
 
         print("🎬 Countdown complete - starting recording with region: \(selectedRegion)")
 
+        // Hide countdown, enter recording mode
+        showCountdown = false
+        isRecording = true
+        viewModel.isRecording = true  // Update view model to disable window detection
+        viewModel.clearWindowHover()  // Clear any window hover state
+
         // Trigger recording state change
         NotificationCenter.default.post(
             name: .recordingStateChanged,
             object: RecordingState.recording(startTime: Date())
         )
 
-        // Close the region selection window
-        onClose()
+        // Keep window open during recording to show selection border
+        print("📹 Recording in progress - keeping overlay visible with border only")
     }
 
     /// Convert global screen coordinates to the SwiftUI overlay coordinate space
@@ -114,32 +132,40 @@ struct RegionSelectionView: View {
 struct SelectionOverlay: View {
     let region: CGRect
     @ObservedObject var viewModel: RegionSelectionViewModel
+    let showHandles: Bool
+    let showDimensionLabel: Bool
 
     var body: some View {
         ZStack {
             // Selection border - bright blue for better contrast
+            // Outset by half the line width so border is entirely outside the region
+            let borderWidth: CGFloat = 3
             Rectangle()
-                .stroke(Color.blue.opacity(0.8), lineWidth: 3)
-                .frame(width: region.width, height: region.height)
+                .stroke(Color.blue.opacity(0.8), lineWidth: borderWidth)
+                .frame(width: region.width + borderWidth, height: region.height + borderWidth)
                 .position(x: region.midX, y: region.midY)
 
-            // Dimension label
-            DimensionLabel(width: region.width, height: region.height)
-                .position(x: region.midX, y: region.minY - 30)
+            // Dimension label - hide during recording
+            if showDimensionLabel {
+                DimensionLabel(width: region.width, height: region.height)
+                    .position(x: region.midX, y: region.minY - 30)
+            }
 
-            // 8 Resize handles
-            ForEach(ResizeHandle.allCases, id: \.self) { handle in
-                ResizeHandleView(
-                    handle: handle,
-                    onDragChanged: { value in
-                        viewModel.handleResize(handle, dragValue: value)
-                    },
-                    onDragEnded: { value in
-                        viewModel.handleResizeEnded(handle, dragValue: value)
-                    },
-                    coordinateSpaceName: RegionSelectionCoordinateSpace.overlay
-                )
-                .position(handle.position(in: region))
+            // 8 Resize handles - only show when not recording
+            if showHandles {
+                ForEach(ResizeHandle.allCases, id: \.self) { handle in
+                    ResizeHandleView(
+                        handle: handle,
+                        onDragChanged: { value in
+                            viewModel.handleResize(handle, dragValue: value)
+                        },
+                        onDragEnded: { value in
+                            viewModel.handleResizeEnded(handle, dragValue: value)
+                        },
+                        coordinateSpaceName: RegionSelectionCoordinateSpace.overlay
+                    )
+                    .position(handle.position(in: region))
+                }
             }
         }
     }
@@ -244,6 +270,8 @@ struct WindowHighlightOverlay: View {
 struct RegionOverlayContent: View {
     @ObservedObject var viewModel: RegionSelectionViewModel
     let overlayOpacity: Double
+    let showHandles: Bool
+    let showDimensionLabel: Bool
     let convertToSwiftUI: (CGRect) -> CGRect
 
     var body: some View {
@@ -269,7 +297,7 @@ struct RegionOverlayContent: View {
                 let swiftUIRegion = convertToSwiftUI(screenRegion)
 
                 DimmingOverlay(cutoutRegion: swiftUIRegion, opacity: overlayOpacity)
-                SelectionOverlay(region: swiftUIRegion, viewModel: viewModel)
+                SelectionOverlay(region: swiftUIRegion, viewModel: viewModel, showHandles: showHandles, showDimensionLabel: showDimensionLabel)
             }
         }
     }
@@ -281,20 +309,49 @@ struct SettingsBarContainer: View {
     let onClose: () -> Void
     let onRecord: () -> Void
 
+    @State private var savedPosition: CGSize = .zero
+    @State private var currentDragOffset: CGSize = .zero
+    @State private var isDragging: Bool = false
+
     var body: some View {
         VStack {
             Spacer()
-            SettingsBarView(
-                settingsManager: SettingsManager.shared,
-                regionSize: viewModel.selectedRegion?.size ?? viewModel.screenBounds.size,
-                onClose: onClose,
-                onRecord: onRecord,
-                isRecording: false // TODO: Hook up actual recording state
-            )
-            .fixedSize(horizontal: true, vertical: true)
+            ZStack {
+                SettingsBarView(
+                    settingsManager: SettingsManager.shared,
+                    viewModel: viewModel,
+                    regionSize: viewModel.selectedRegion?.size ?? viewModel.screenBounds.size,
+                    onClose: onClose,
+                    onRecord: onRecord,
+                    isRecording: false // TODO: Hook up actual recording state
+                )
+                .fixedSize(horizontal: true, vertical: true)
+            }
+            .compositingGroup() // Render view and shadow together as one unit
             .frame(maxWidth: .infinity)
             .padding(.bottom, 40)
+            .offset(
+                x: savedPosition.width + currentDragOffset.width,
+                y: savedPosition.height + currentDragOffset.height
+            )
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        isDragging = true
+                        currentDragOffset = value.translation
+                    }
+                    .onEnded { value in
+                        isDragging = false
+                        // Save the final position
+                        savedPosition = CGSize(
+                            width: savedPosition.width + value.translation.width,
+                            height: savedPosition.height + value.translation.height
+                        )
+                        currentDragOffset = .zero
+                    }
+            )
         }
+        .allowsHitTesting(true)
     }
 }
 
@@ -332,13 +389,14 @@ struct RegionSelectionGestureModifier: ViewModifier {
                 // Only allow tap actions when no region is selected
                 guard viewModel.selectedRegion == nil else { return }
 
-                // Check if tapping on a hovered window
+                // Check if tapping on a hovered window (works in both window and region mode)
                 if viewModel.isHoveringOverWindow {
                     viewModel.selectHoveredWindow()
-                } else {
-                    // If no selection and no window hover, clicking selects the full screen
+                } else if viewModel.selectionMode == .screen {
+                    // In screen mode only: clicking selects the full screen
                     viewModel.selectedRegion = viewModel.screenBounds
                 }
+                // In region mode: clicking on empty space does nothing (user must drag)
             }
     }
 }

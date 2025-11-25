@@ -7,6 +7,7 @@ public class RegionSelectionWindow: NSWindow {
     private let viewModel: RegionSelectionViewModel
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
+    private var recordingStateObserver: Any?
 
     /// Access to the view model for external mouse tracking
     public var selectionViewModel: RegionSelectionViewModel {
@@ -37,6 +38,7 @@ public class RegionSelectionWindow: NSWindow {
         self.level = .floating // Float above other windows
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         self.ignoresMouseEvents = false
+        self.hasShadow = false // Disable shadow to prevent ghost artifacts
 
         // Setup SwiftUI view
         setupContentView()
@@ -54,11 +56,17 @@ public class RegionSelectionWindow: NSWindow {
             if event.keyCode == 53 { // Escape key code
                 guard let self = self else { return event }
 
+                // Check if cancellation is allowed based on selection mode
+                guard self.viewModel.canCancelSelection() else {
+                    // In screen mode, ESC is disabled
+                    return nil // Consume the event but do nothing
+                }
+
                 // If a region is selected, clear it (back to select mode)
                 if self.viewModel.selectedRegion != nil {
                     self.viewModel.selectedRegion = nil
                     self.viewModel.clearWindowHover()
-                    // Re-trigger window detection at current mouse position
+                    // Re-trigger window detection at current mouse position (for window mode)
                     let currentMouseLocation = NSEvent.mouseLocation
                     self.viewModel.updateHoveredWindow(at: currentMouseLocation)
                 } else {
@@ -85,6 +93,30 @@ public class RegionSelectionWindow: NSWindow {
         // Store monitors for cleanup
         self.keyMonitor = keyMonitor
         self.mouseMonitor = mouseMonitor
+
+        // Listen for recording state changes to enable/disable mouse passthrough
+        recordingStateObserver = NotificationCenter.default.addObserver(
+            forName: .recordingStateChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let state = notification.object as? RecordingState else { return }
+
+            switch state {
+            case .recording:
+                // During recording, allow mouse events to pass through
+                self?.ignoresMouseEvents = true
+                print("🖱 Window now ignores mouse events - user can interact with apps")
+
+                // Force window invalidation to clear ghost artifacts
+                self?.invalidateShadow()
+                self?.contentView?.setNeedsDisplay(self?.contentView?.bounds ?? .zero)
+            case .idle, .paused:
+                // Not recording, capture mouse events again
+                self?.ignoresMouseEvents = false
+                print("🖱 Window captures mouse events - selection mode")
+            }
+        }
     }
 
     /// Show the window and activate the application
@@ -121,6 +153,10 @@ public class RegionSelectionWindow: NSWindow {
         if let mouseMonitor = mouseMonitor {
             NSEvent.removeMonitor(mouseMonitor)
             self.mouseMonitor = nil
+        }
+        if let observer = recordingStateObserver {
+            NotificationCenter.default.removeObserver(observer)
+            self.recordingStateObserver = nil
         }
     }
 

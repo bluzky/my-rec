@@ -27,8 +27,7 @@ struct PreviewDialogView: View {
                         VideoPlayer(player: player)
                             .frame(width: targetWidth, height: targetHeight)
                             .onAppear {
-                                print("▶️ Video player appeared")
-                                viewModel.play() // Auto-play when ready
+                                print("🎬 Video player appeared - ready to play")
                             }
                         Spacer(minLength: 0)
                     }

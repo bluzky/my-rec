@@ -23,8 +23,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Recording Engine
     private var captureEngine: ScreenCaptureEngine?
-    private var frameCount: Int = 0
     private var recordingStartTime: Date?
+    private var recordingResolution: Resolution?
+    private var recordingFrameRate: FrameRate?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Show dock icon for window-based app
@@ -88,6 +89,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(handleOpenTrim(_:)),
             name: .openTrim,
+            object: nil
+        )
+
+        // Listen for preview dialog closed notification
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePreviewDialogClosed),
+            name: .previewDialogClosed,
             object: nil
         )
 
@@ -167,6 +176,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             print("⚠️ No recording data found in notification")
         }
+    }
+
+    @objc private func handlePreviewDialogClosed() {
+        print("🗑 Preview dialog closed - releasing reference")
+        previewDialogWindowController = nil
     }
 
     
@@ -288,7 +302,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let audioEnabled = SettingsManager.shared.defaultSettings.audioEnabled
         let microphoneEnabled = SettingsManager.shared.defaultSettings.microphoneEnabled
 
+        // Store recording settings for metadata
+        self.recordingResolution = resolution
+        self.recordingFrameRate = frameRate
+
         print("📹 Starting capture...")
+        print("  📊 Stored for metadata - Resolution: \(resolution.displayName), Frame Rate: \(frameRate.displayName)")
         print("  Region: \(region)")
         print("  Resolution: \(resolution.displayName)")
         print("  Frame Rate: \(frameRate.displayName)")
@@ -297,8 +316,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create and configure capture engine
         captureEngine = ScreenCaptureEngine()
-        captureEngine?.onFrameCaptured = { [weak self] frame, time in
-            self?.handleFrameCaptured(frame: frame, time: time)
+        captureEngine?.onRecordingStarted = { [weak self] in
+            self?.handleRecordingStarted()
+        }
+        captureEngine?.onRecordingFinished = { [weak self] duration, fileURL in
+            self?.handleRecordingFinished(duration: duration, fileURL: fileURL)
         }
         captureEngine?.onError = { [weak self] error in
             self?.handleCaptureError(error)
@@ -330,10 +352,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 print("✅ AppDelegate: Recording stopped successfully")
                 print("📁 Temp file: \(tempVideoURL.path)")
-                print("📊 Total frames: \(frameCount)")
 
-                // Use FileManagerService to save file permanently
-                let metadata = try await FileManagerService.shared.saveVideoFile(from: tempVideoURL)
+                // Use FileManagerService to save file permanently with actual recording settings
+                print("📊 Passing metadata - Resolution: \(recordingResolution?.displayName ?? "nil"), Frame Rate: \(recordingFrameRate?.displayName ?? "nil")")
+                let metadata = try await FileManagerService.shared.saveVideoFile(
+                    from: tempVideoURL,
+                    resolution: recordingResolution ?? .fullHD,
+                    frameRate: recordingFrameRate ?? .fps30
+                )
 
                 print("✅ AppDelegate: File saved permanently")
                 print("  Final location: \(metadata.fileURL.path)")
@@ -376,29 +402,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @discardableResult
-    private func resetRecordingState() -> Int {
-        let totalFrames = frameCount
-        frameCount = 0
+    private func resetRecordingState() {
         captureEngine = nil
         recordingStartTime = nil
-        print("🔄 AppDelegate: Recording state reset - \(totalFrames) frames captured")
-        return totalFrames
+        recordingResolution = nil
+        recordingFrameRate = nil
+        print("🔄 AppDelegate: Recording state reset")
     }
 
-    private func handleFrameCaptured(frame: Int, time: CMTime) {
-        frameCount = frame
-
-        // Log every 30 frames (once per second at 30fps)
-        if frameCount % 30 == 0 {
-            print("📹 Frame \(frameCount) captured at \(String(format: "%.1f", time.seconds))s")
-        }
-
-        // Update status bar with frame count
+    private func handleRecordingStarted() {
+        print("✅ AppDelegate: Recording started")
+        // Update status bar to show recording in progress
         DispatchQueue.main.async {
             NotificationCenter.default.post(
-                name: .recordingFrameCaptured,
+                name: .recordingStarted,
+                object: nil
+            )
+        }
+    }
+
+    private func handleRecordingFinished(duration: TimeInterval, fileURL: URL) {
+        Task { @MainActor in
+            // Use FileManagerService to save file permanently with actual recording settings
+            print("✅ Processing completed recording...")
+            let metadata = try await FileManagerService.shared.saveVideoFile(
+                from: fileURL,
+                resolution: recordingResolution ?? .fullHD,
+                frameRate: recordingFrameRate ?? .fps30
+            )
+
+            print("✅ Recording saved: \(metadata.filename)")
+
+            // Notify that a new recording has been saved
+            NotificationCenter.default.post(
+                name: .recordingSaved,
                 object: nil,
-                userInfo: ["frameCount": frame, "time": time.seconds]
+                userInfo: ["metadata": metadata]
+            )
+
+            // Clean up temp file
+            FileManagerService.shared.cleanupTempFile(fileURL)
+
+            // Show preview
+            openPreviewDialog(with: metadata)
+
+            // Reset state
+            resetRecordingState()
+
+            // Notify status bar to return to idle state
+            NotificationCenter.default.post(
+                name: .recordingStateChanged,
+                object: RecordingState.idle
+            )
+
+            // Also notify status bar of completion
+            NotificationCenter.default.post(
+                name: .recordingFinished,
+                object: nil,
+                userInfo: ["duration": duration]
             )
         }
     }

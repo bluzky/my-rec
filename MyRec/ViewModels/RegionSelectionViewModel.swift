@@ -1,12 +1,21 @@
 import SwiftUI
 import Combine
 
+/// Selection mode for region selection
+public enum SelectionMode: Equatable {
+    case screen    // Select entire screen
+    case window    // Select a window
+    case region    // Manual region selection
+}
+
 public class RegionSelectionViewModel: ObservableObject {
     @Published var selectedRegion: CGRect?
     @Published var isDragging = false
     @Published var isResizing = false
     @Published var hoveredWindow: WindowInfo?
     @Published var isHoveringOverWindow = false
+    @Published var selectionMode: SelectionMode = .region  // Default to manual region
+    @Published var isRecording = false  // Track recording state
 
     private var dragStartPoint: CGPoint?
     private var resizeStartPoint: CGPoint?
@@ -23,6 +32,9 @@ public class RegionSelectionViewModel: ObservableObject {
 
     /// Handle drag gesture to create selection rectangle
     func handleDragChanged(_ value: DragGesture.Value) {
+        // Only allow manual dragging in region mode
+        guard selectionMode == .region else { return }
+
         isDragging = true
 
         if dragStartPoint == nil {
@@ -146,6 +158,9 @@ public class RegionSelectionViewModel: ObservableObject {
 
     /// Handle resize gesture for a specific handle
     func handleResize(_ handle: ResizeHandle, dragValue: DragGesture.Value) {
+        // Cannot resize in screen mode
+        guard selectionMode != .screen else { return }
+
         isResizing = true
 
         // Store initial state on first drag event
@@ -249,6 +264,20 @@ public class RegionSelectionViewModel: ObservableObject {
 
     /// Check for window under cursor and update hover state
     func updateHoveredWindow(at location: CGPoint) {
+        // Don't detect windows when recording
+        guard !isRecording else {
+            hoveredWindow = nil
+            isHoveringOverWindow = false
+            return
+        }
+
+        // Only detect windows in window mode or region mode
+        guard selectionMode == .window || selectionMode == .region else {
+            hoveredWindow = nil
+            isHoveringOverWindow = false
+            return
+        }
+
         // Don't detect windows during drag/resize operations
         guard !isDragging && !isResizing else {
             hoveredWindow = nil
@@ -256,8 +285,7 @@ public class RegionSelectionViewModel: ObservableObject {
             return
         }
 
-        // Don't detect windows when a region is already selected
-        // User must press ESC to cancel selection first
+        // Don't detect windows if a region is already selected
         guard selectedRegion == nil else {
             hoveredWindow = nil
             isHoveringOverWindow = false
@@ -294,6 +322,43 @@ public class RegionSelectionViewModel: ObservableObject {
     func clearWindowHover() {
         hoveredWindow = nil
         isHoveringOverWindow = false
+    }
+
+    // MARK: - Selection Mode Management
+
+    /// Switch to a different selection mode
+    func switchMode(to mode: SelectionMode) {
+        selectionMode = mode
+
+        switch mode {
+        case .screen:
+            // Auto-select entire screen
+            selectedRegion = screenBounds
+            clearWindowHover()
+            print("📱 Switched to screen mode - auto-selected entire screen")
+
+        case .window:
+            // Clear selection and enter window selection mode
+            selectedRegion = nil
+            clearWindowHover()
+            print("🪟 Switched to window mode - hover over a window to select")
+
+        case .region:
+            // Clear selection and enter manual region mode
+            selectedRegion = nil
+            clearWindowHover()
+            print("✏️ Switched to region mode - click a window or drag to select region")
+        }
+    }
+
+    /// Check if ESC key should be allowed based on current mode
+    func canCancelSelection() -> Bool {
+        switch selectionMode {
+        case .screen:
+            return false  // Cannot cancel in screen mode
+        case .window, .region:
+            return true   // Can cancel in window and region modes
+        }
     }
 
     // MARK: - State Management

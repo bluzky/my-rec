@@ -8,6 +8,7 @@ struct SettingsBarView: View {
     // MARK: - Properties
 
     @ObservedObject var settingsManager: SettingsManager
+    @ObservedObject var viewModel: RegionSelectionViewModel
     let regionSize: CGSize
     let onClose: () -> Void
     let onRecord: () -> Void
@@ -23,9 +24,9 @@ struct SettingsBarView: View {
             // Close button
             Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 26))
+                    .font(.system(size: 20))
                     .foregroundColor(.primary.opacity(0.7))
-                    .frame(width: 50, height: 50)
+                    .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
 
@@ -37,21 +38,27 @@ struct SettingsBarView: View {
             HStack(spacing: 8) {
                 CaptureButton(
                     icon: "rectangle.fill",
-                    isSelected: false,
+                    isSelected: viewModel.selectionMode == .screen,
                     help: "Select Entire Screen"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .screen)
+                }
 
                 CaptureButton(
                     icon: "macwindow",
-                    isSelected: false,
+                    isSelected: viewModel.selectionMode == .window,
                     help: "Select Window"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .window)
+                }
 
                 CaptureButton(
                     icon: "rectangle.dashed",
-                    isSelected: true,
+                    isSelected: viewModel.selectionMode == .region,
                     help: "Select Region"
-                ) { }
+                ) {
+                    viewModel.switchMode(to: .region)
+                }
             }
             .padding(.horizontal, 8)
 
@@ -253,7 +260,7 @@ struct SettingsBarView: View {
             .accessibilityHint("Begins screen recording after countdown")
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, 3)
         .background(
             VisualEffectBlur(material: .sidebar, blendingMode: .behindWindow)
                 .cornerRadius(12)
@@ -295,16 +302,12 @@ struct CaptureButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.system(size: 18))
                 .foregroundColor(.primary.opacity(isSelected ? 0.9 : (isHovering ? 0.75 : 0.6)))
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(isSelected ? Color.primary.opacity(0.15) : (isHovering ? Color.primary.opacity(0.08) : Color.clear))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.primary.opacity(isSelected ? 0.25 : (isHovering ? 0.18 : 0.12)), lineWidth: 1)
                 )
                 .scaleEffect(isHovering && !isSelected ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 0.15), value: isHovering)
@@ -352,14 +355,10 @@ struct ToggleIconButton: View {
             Image(systemName: displayIcon)
                 .font(.system(size: 18))
                 .foregroundColor(.primary.opacity(isDisabled ? 0.3 : (isOn ? 0.9 : (isHovering ? 0.65 : 0.5))))
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
                         .fill(isOn ? Color.primary.opacity(0.15) : (isHovering && !isDisabled ? Color.primary.opacity(0.05) : Color.clear))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.primary.opacity(isOn ? 0.25 : (isHovering && !isDisabled ? 0.18 : 0.12)), lineWidth: 1)
                 )
                 .scaleEffect(isOn ? 1.0 : (isHovering && !isDisabled ? 1.05 : 1.0))
                 .animation(.easeInOut(duration: 0.15), value: isHovering)
@@ -411,6 +410,7 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
+                        viewModel: RegionSelectionViewModel(screenBounds: CGRect(x: 0, y: 0, width: 1920, height: 1080)),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},
@@ -429,6 +429,7 @@ struct SettingsBarView_Previews: PreviewProvider {
                     Spacer()
                     SettingsBarView(
                         settingsManager: SettingsManager.shared,
+                        viewModel: RegionSelectionViewModel(screenBounds: CGRect(x: 0, y: 0, width: 1920, height: 1080)),
                         regionSize: CGSize(width: 1440, height: 875),
                         onClose: {},
                         onRecord: {},

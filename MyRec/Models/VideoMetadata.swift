@@ -39,7 +39,9 @@ struct VideoMetadata: Identifiable, Equatable {
 
     /// Resolution display string (e.g., "1920×1080 @ 30 FPS")
     var displayResolution: String {
-        "\(resolution.width)×\(resolution.height) @ \(frameRate.value) FPS"
+        let width = Int(naturalSize.width.rounded())
+        let height = Int(naturalSize.height.rounded())
+        return "\(width)×\(height) @ \(frameRate.value) FPS"
     }
 
     /// Creation date string (e.g., "Nov 18, 2025 at 2:30 PM")
