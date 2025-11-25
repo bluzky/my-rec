@@ -95,7 +95,13 @@ private extension PreviewDialogView {
 
 // MARK: - NSView-backed player
 
-/// Minimal wrapper around `AVPlayerView` to avoid `VideoPlayerView` demangling crashes
+/// Minimal wrapper around `AVPlayerView` to avoid `VideoPlayerView` demangling crashes.
+///
+/// SwiftUI's `VideoPlayer` (and its underlying `VideoPlayerView`) has known issues on macOS 14.x and 15.x
+/// where, in certain build configurations (especially Release builds or when using LTO), the app can crash
+/// due to symbol demangling errors. See: https://developer.apple.com/forums/thread/733834
+/// This wrapper uses an `NSViewRepresentable` to embed an `AVPlayerView` directly, avoiding the problematic
+/// SwiftUI component and ensuring stable video playback.
 struct AVPlayerContainerView: NSViewRepresentable {
     let player: AVPlayer
 
