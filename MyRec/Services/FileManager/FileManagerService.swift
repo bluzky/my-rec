@@ -50,13 +50,33 @@ class FileManagerService {
         // Move file atomically
         try moveFile(from: tempURL, to: finalURL)
 
-        // Wait a bit for the file to be fully written
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        // Extract metadata with actual recording settings, with a brief retry loop
+        // to handle transient readiness issues after the move.
+        let maxAttempts = 3
+        let retryDelayNanoseconds: UInt64 = 100_000_000 // 0.1 seconds
 
-        // Extract metadata with actual recording settings
-        let metadata = try await extractMetadata(from: finalURL, resolution: resolution, frameRate: frameRate)
+        var lastError: Error?
 
-        return metadata
+        for attempt in 1...maxAttempts {
+            do {
+                let metadata = try await extractMetadata(from: finalURL, resolution: resolution, frameRate: frameRate)
+                return metadata
+            } catch {
+                lastError = error
+
+                // If this was the last attempt, rethrow the last error
+                if attempt == maxAttempts {
+                    throw error
+                }
+
+                // Wait briefly before retrying, in case the file is not yet fully ready
+                try await Task.sleep(nanoseconds: retryDelayNanoseconds)
+            }
+        }
+
+        // We should never reach this point because either we return metadata
+        // or throw an error within the loop above.
+        throw lastError ?? FileError.metadataExtractionFailed
     }
 
     /// Delete temporary file
@@ -71,8 +91,8 @@ class FileManagerService {
         }
     }
 
-    /// Get list of saved recordings from configured save directory
-    /// - Returns: Array of VideoMetadata for all .mp4 files
+    /// Get list of saved recordings from configured save directory with thumbnails
+    /// - Returns: Array of VideoMetadata for all .mp4 files with generated thumbnails
     func getSavedRecordings() async throws -> [VideoMetadata] {
         let files = try fileManager.contentsOfDirectory(
             at: saveDirectory,
@@ -82,6 +102,7 @@ class FileManagerService {
 
         let mp4Files = files.filter { $0.pathExtension.lowercased() == "mp4" }
 
+        // Extract metadata for all files (without thumbnails)
         var recordings: [VideoMetadata] = []
         for file in mp4Files {
             do {
@@ -95,7 +116,27 @@ class FileManagerService {
         // Sort by creation date (newest first)
         recordings.sort { $0.createdDate > $1.createdDate }
 
-        return recordings
+        // Generate thumbnails in batches
+        let thumbnails = await ThumbnailGenerator.shared.generateThumbnails(
+            for: recordings.map { $0.fileURL }
+        )
+
+        // Update recordings with thumbnails
+        let recordingsWithThumbnails = recordings.map { metadata in
+            VideoMetadata(
+                filename: metadata.filename,
+                fileURL: metadata.fileURL,
+                duration: metadata.duration,
+                resolution: metadata.resolution,
+                frameRate: metadata.frameRate,
+                fileSize: metadata.fileSize,
+                createdDate: metadata.createdDate,
+                thumbnail: thumbnails[metadata.fileURL] ?? nil,
+                naturalSize: metadata.naturalSize
+            )
+        }
+
+        return recordingsWithThumbnails
     }
 
     // MARK: - Private Methods
@@ -157,21 +198,17 @@ class FileManagerService {
 
         let asset = AVURLAsset(url: url)
 
-        // Load asset properties with timeout to prevent hanging
-        let loaded = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+        // Load asset properties asynchronously to avoid blocking the main thread
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             asset.loadValuesAsynchronously(forKeys: ["duration", "tracks"]) {
                 var error: NSError?
                 if asset.statusOfValue(forKey: "duration", error: &error) == .loaded &&
                    asset.statusOfValue(forKey: "tracks", error: &error) == .loaded {
-                    continuation.resume(returning: true)
+                    continuation.resume()
                 } else {
                     continuation.resume(throwing: error ?? FileError.metadataExtractionFailed)
                 }
             }
-        }
-
-        guard loaded else {
-            throw FileError.metadataExtractionFailed
         }
 
         // Get file attributes (already fetched above)

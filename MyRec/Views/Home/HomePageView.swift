@@ -48,32 +48,7 @@ struct HomePageView: View {
     // MARK: - Record Button Section
 
     private var recordButtonSection: some View {
-        HStack {
-            Spacer()
-
-            Button(action: { viewModel.startRecording() }) {
-                HStack(spacing: 12) {
-                    Image(systemName: "video.fill")
-                        .font(.title)
-                        .foregroundColor(.white)
-
-                    Text("Record Screen")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 20)
-                .background(
-                    RoundedRectangle(cornerRadius: 24)
-                        .fill(Color.accentColor)
-                )
-            }
-            .buttonStyle(.plain)
-            .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
-
-            Spacer()
-        }
+        RecordButton(action: { viewModel.startRecording() })
     }
 
     // MARK: - Recordings List
@@ -118,6 +93,41 @@ struct HomePageView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+}
+
+// MARK: - Record Button with Hover Effect
+
+struct RecordButton: View {
+    let action: () -> Void
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack {
+            Spacer()
+
+            Button(action: action) {
+                ZStack {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 80, height: 80)
+                        .scaleEffect(isHovering ? 1.05 : 1.0)
+
+                    Image(systemName: "video.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.white)
+                }
+            }
+            .buttonStyle(.plain)
+            .shadow(color: Color.red.opacity(isHovering ? 0.6 : 0.4), radius: isHovering ? 16 : 12, x: 0, y: 4)
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isHovering = hovering
+                }
+            }
+
+            Spacer()
+        }
     }
 }
 
