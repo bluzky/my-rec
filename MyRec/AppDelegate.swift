@@ -20,6 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var homePageWindowController: HomePageWindowController?
     var previewDialogWindowController: PreviewDialogWindowController?
     var trimDialogWindowController: TrimDialogWindowController?
+    var floatingRecordingControlWindow: FloatingRecordingControlWindow?
 
     // MARK: - Recording Engine
     private var captureEngine: ScreenCaptureEngine?
@@ -41,6 +42,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         homePageWindowController = HomePageWindowController()
         homePageWindowController?.show()
 
+        // Initialize floating recording control window (hidden by default)
+        floatingRecordingControlWindow = FloatingRecordingControlWindow()
+
         // Set up notification observers
         setupNotificationObservers()
 
@@ -48,6 +52,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("✅ Status bar controller initialized")
         print("✅ Settings window controller initialized")
         print("✅ Home page window initialized and shown")
+        print("✅ Floating recording control initialized")
         print("✅ Notification observers set up")
     }
 

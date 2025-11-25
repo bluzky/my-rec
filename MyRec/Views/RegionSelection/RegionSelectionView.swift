@@ -72,6 +72,13 @@ struct RegionSelectionView: View {
             self.viewModel.reset()
             self.onClose()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .cancelCountdown)) { _ in
+            // Cancel countdown and return to selection mode
+            print("❌ Countdown canceled - returning to selection mode")
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showCountdown = false
+            }
+        }
         .modifier(RegionSelectionGestureModifier(viewModel: viewModel))
         // Note: Escape key handling will be added at the window level for macOS 12 compatibility
     }
@@ -84,6 +91,14 @@ struct RegionSelectionView: View {
         }
 
         print("🎬 Starting countdown before recording")
+
+        // Notify that countdown has started (to show control bar)
+        NotificationCenter.default.post(
+            name: .countdownStarted,
+            object: nil,
+            userInfo: ["selectedRegion": viewModel.selectedRegion as Any]
+        )
+
         // Show countdown overlay
         withAnimation(.easeInOut(duration: 0.3)) {
             showCountdown = true
@@ -105,10 +120,11 @@ struct RegionSelectionView: View {
         viewModel.isRecording = true  // Update view model to disable window detection
         viewModel.clearWindowHover()  // Clear any window hover state
 
-        // Trigger recording state change
+        // Trigger recording state change with region info
         NotificationCenter.default.post(
             name: .recordingStateChanged,
-            object: RecordingState.recording(startTime: Date())
+            object: RecordingState.recording(startTime: Date()),
+            userInfo: ["selectedRegion": selectedRegion]
         )
 
         // Keep window open during recording to show selection border
