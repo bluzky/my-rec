@@ -16,6 +16,8 @@ public class RegionSelectionViewModel: ObservableObject {
     @Published var isHoveringOverWindow = false
     @Published var selectionMode: SelectionMode = .region  // Default to manual region
     @Published var isRecording = false  // Track recording state
+    @Published var cursorLocation: CGPoint?
+    @Published var activeResizeHandle: ResizeHandle?
 
     private var dragStartPoint: CGPoint?
     private var resizeStartPoint: CGPoint?
@@ -162,6 +164,7 @@ public class RegionSelectionViewModel: ObservableObject {
         guard selectionMode != .screen else { return }
 
         isResizing = true
+        activeResizeHandle = handle
 
         // Store initial state on first drag event
         if resizeStartPoint == nil {
@@ -250,6 +253,7 @@ public class RegionSelectionViewModel: ObservableObject {
     func handleResizeEnded(_ handle: ResizeHandle, dragValue: DragGesture.Value) {
         let originalRegion = resizeStartRegion
         isResizing = false
+        activeResizeHandle = nil
         resizeStartPoint = nil
         resizeStartRegion = nil
 
@@ -264,6 +268,9 @@ public class RegionSelectionViewModel: ObservableObject {
 
     /// Check for window under cursor and update hover state
     func updateHoveredWindow(at location: CGPoint) {
+        // Always track the cursor for UI overlays (crosshair, etc.)
+        cursorLocation = location
+
         // Don't detect windows when recording
         guard !isRecording else {
             hoveredWindow = nil
@@ -373,5 +380,6 @@ public class RegionSelectionViewModel: ObservableObject {
         dragStartPoint = nil
         resizeStartPoint = nil
         resizeStartRegion = nil
+        activeResizeHandle = nil
     }
 }

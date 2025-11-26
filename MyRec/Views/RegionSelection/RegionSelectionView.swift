@@ -29,6 +29,30 @@ struct RegionSelectionView: View {
                 convertToSwiftUI: convertScreenToSwiftUICoordinates
             )
 
+            // Crosshair guide at current cursor position
+            if !isRecording && viewModel.selectionMode != .screen {
+                if viewModel.isResizing,
+                   let handle = viewModel.activeResizeHandle,
+                   let selectedRegion = viewModel.selectedRegion {
+                    let swiftUIRegion = convertScreenToSwiftUICoordinates(selectedRegion)
+                    if handle.isCorner, let cursorLocation = viewModel.cursorLocation {
+                        CrosshairGuideView(position: convertScreenPointToSwiftUICoordinates(cursorLocation))
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    } else if handle.isEdge {
+                        HairlineGuideView(region: swiftUIRegion, handle: handle)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                } else if viewModel.selectionMode == .region &&
+                            (viewModel.selectedRegion == nil || viewModel.isDragging),
+                          let cursorLocation = viewModel.cursorLocation {
+                    CrosshairGuideView(position: convertScreenPointToSwiftUICoordinates(cursorLocation))
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+
             // Settings bar at the bottom center
             if !showCountdown && !isRecording {
                 SettingsBarContainer(
@@ -142,6 +166,16 @@ struct RegionSelectionView: View {
             height: screenRect.height
         )
     }
+
+    /// Convert a global screen point to the SwiftUI overlay coordinate space
+    private func convertScreenPointToSwiftUICoordinates(_ screenPoint: CGPoint) -> CGPoint {
+        let bounds = viewModel.screenBounds
+
+        return CGPoint(
+            x: screenPoint.x - bounds.origin.x,
+            y: bounds.maxY - screenPoint.y
+        )
+    }
 }
 
 /// The selection overlay showing the selected region with resize handles
@@ -183,6 +217,68 @@ struct SelectionOverlay: View {
                     .position(handle.position(in: region))
                 }
             }
+        }
+    }
+}
+
+/// Crosshair guide rendered at the current cursor position
+struct CrosshairGuideView: View {
+    let position: CGPoint
+
+    var body: some View {
+        GeometryReader { geometry in
+            // Clamp to view bounds to avoid drawing outside the overlay
+            let clampedX = min(max(position.x, 0), geometry.size.width)
+            let clampedY = min(max(position.y, 0), geometry.size.height)
+
+            Path { path in
+                // Vertical line
+                path.move(to: CGPoint(x: clampedX, y: 0))
+                path.addLine(to: CGPoint(x: clampedX, y: geometry.size.height))
+
+                // Horizontal line
+                path.move(to: CGPoint(x: 0, y: clampedY))
+                path.addLine(to: CGPoint(x: geometry.size.width, y: clampedY))
+            }
+            .stroke(Color.blue.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
+            .overlay(
+                Circle()
+                    .stroke(Color.blue.opacity(0.9), lineWidth: 1)
+                    .background(
+                        Circle()
+                            .fill(Color.blue.opacity(0.35))
+                    )
+                    .frame(width: 8, height: 8)
+                    .position(x: clampedX, y: clampedY)
+            )
+        }
+    }
+}
+
+/// Single hairline guide shown when dragging an edge handle
+struct HairlineGuideView: View {
+    let region: CGRect
+    let handle: ResizeHandle
+
+    var body: some View {
+        GeometryReader { geometry in
+            Path { path in
+                switch handle {
+                case .middleLeft, .middleRight:
+                    let x = handle == .middleLeft ? region.minX : region.maxX
+                    let clampedX = min(max(x, 0), geometry.size.width)
+                    path.move(to: CGPoint(x: clampedX, y: 0))
+                    path.addLine(to: CGPoint(x: clampedX, y: geometry.size.height))
+                case .topCenter, .bottomCenter:
+                    let y = handle == .topCenter ? region.minY : region.maxY
+                    let clampedY = min(max(y, 0), geometry.size.height)
+                    path.move(to: CGPoint(x: 0, y: clampedY))
+                    path.addLine(to: CGPoint(x: geometry.size.width, y: clampedY))
+                default:
+                    break
+                }
+            }
+            .stroke(Color.blue.opacity(0.8), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
         }
     }
 }
