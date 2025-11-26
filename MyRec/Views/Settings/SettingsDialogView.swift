@@ -72,6 +72,17 @@ struct SettingsDialogView: View {
 
                 Divider()
 
+                // Dock Icon
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 12) {
+                        Text("Dock Icon:")
+                            .frame(width: 140, alignment: .trailing)
+                        Toggle("Hide from dock when dashboard closed", isOn: $settingsManager.hideDockIcon)
+                    }
+                }
+
+                Divider()
+
                 // Resolution & FPS
                 HStack(spacing: 12) {
                     Text("Default Quality:")

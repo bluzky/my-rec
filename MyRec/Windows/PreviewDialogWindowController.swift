@@ -39,6 +39,11 @@ class PreviewDialogWindowController: NSWindowController, NSWindowDelegate {
         self.previewDialogView = previewDialogView
         self.viewModel = viewModel
 
+        // Set callback to close window when requested
+        viewModel.setOnCloseWindow { [weak self] in
+            self?.close()
+        }
+
         // Set self as window delegate to detect when it closes
         window.delegate = self
     }

@@ -75,11 +75,6 @@ struct PreviewDialogView: View {
                     Label("Delete", systemImage: "trash")
                 }
                 .help("Delete Recording")
-
-                Button(action: { viewModel.shareRecording() }) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .help("Share")
             }
         }
     }
