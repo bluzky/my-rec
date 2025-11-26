@@ -121,7 +121,7 @@ struct RegionSelectionView: View {
         NotificationCenter.default.post(
             name: .countdownStarted,
             object: nil,
-            userInfo: ["selectedRegion": viewModel.selectedRegion as Any]
+            userInfo: [NotificationUserInfoKey.selectedRegion: viewModel.selectedRegion as Any]
         )
 
         // Show countdown overlay
@@ -149,7 +149,7 @@ struct RegionSelectionView: View {
         NotificationCenter.default.post(
             name: .recordingStateChanged,
             object: RecordingState.recording(startTime: Date()),
-            userInfo: ["selectedRegion": selectedRegion]
+            userInfo: [NotificationUserInfoKey.selectedRegion: selectedRegion]
         )
 
         // Keep window open during recording to show selection border
