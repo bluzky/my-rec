@@ -35,8 +35,9 @@ struct RegionSelectionView: View {
                    let handle = viewModel.activeResizeHandle,
                    let selectedRegion = viewModel.selectedRegion {
                     let swiftUIRegion = convertScreenToSwiftUICoordinates(selectedRegion)
-                    if handle.isCorner, let cursorLocation = viewModel.cursorLocation {
-                        CrosshairGuideView(position: convertScreenPointToSwiftUICoordinates(cursorLocation))
+                    if handle.isCorner {
+                        let cornerPoint = handle.position(in: swiftUIRegion)
+                        CrosshairGuideView(position: cornerPoint)
                             .allowsHitTesting(false)
                             .transition(.opacity)
                     } else if handle.isEdge {
