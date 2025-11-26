@@ -29,8 +29,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingFrameRate: FrameRate?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Show dock icon for window-based app
-        NSApp.setActivationPolicy(.regular)
+        // Set dock icon visibility based on user preference
+        if SettingsManager.shared.hideDockIcon {
+            NSApp.setActivationPolicy(.accessory)
+        } else {
+            NSApp.setActivationPolicy(.regular)
+        }
 
         // Initialize status bar
         statusBarController = StatusBarController()
@@ -214,6 +218,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showDashboard() {
+        // Show dock icon when dashboard opens if setting is disabled
+        if !SettingsManager.shared.hideDockIcon {
+            NSApp.setActivationPolicy(.regular)
+        }
         homePageWindowController?.show()
         print("✅ Dashboard shown")
     }
@@ -509,7 +517,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        // Hide dock icon when dashboard closes if setting is enabled
+        if SettingsManager.shared.hideDockIcon {
+            NSApp.setActivationPolicy(.accessory)
+        }
         // Don't quit when windows close (menu bar app)
         return false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // When dock icon is clicked and no windows are visible, show the dashboard
+        if !flag {
+            print("🏠 Dock icon clicked - showing dashboard")
+            showDashboard()
+        }
+        return true
     }
 }

@@ -47,6 +47,16 @@ class HomePageViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Listen for recordings being deleted
+        NotificationCenter.default.publisher(for: .recordingDeleted)
+            .sink { [weak self] notification in
+                Task { @MainActor in
+                    print("🏠 HomePageViewModel: Recording deleted, refreshing list...")
+                    self?.refresh()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     /// Load all recordings from disk
@@ -117,16 +127,6 @@ class HomePageViewModel: ObservableObject {
         print("✂️ Trimming recording: \(recording.filename)")
         // TODO: Implement trim dialog with VideoMetadata
         print("⚠️ Trim dialog not yet updated for VideoMetadata")
-    }
-
-    /// Share a recording
-    func shareRecording(_ recording: VideoMetadata) {
-        print("📤 Sharing recording: \(recording.filename)")
-        // Open share sheet for the file
-        let sharingService = NSSharingServicePicker(items: [recording.fileURL])
-        // Note: In a real app, you'd need a view to anchor this to
-        // For now, just log
-        print("📤 Would show share sheet for: \(recording.fileURL.path)")
     }
 
     /// Delete a recording

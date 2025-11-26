@@ -24,12 +24,17 @@ public class SettingsManager: ObservableObject {
         didSet { save() }
     }
 
+    @Published var hideDockIcon: Bool {
+        didSet { save() }
+    }
+
     private enum Keys {
         static let savePath = "savePath"
         static let defaultResolution = "defaultResolution"
         static let defaultFrameRate = "defaultFrameRate"
         static let launchAtLogin = "launchAtLogin"
         static let defaultSettings = "defaultSettings"
+        static let hideDockIcon = "hideDockIcon"
     }
 
     public init() {
@@ -53,6 +58,13 @@ public class SettingsManager: ObservableObject {
 
         self.launchAtLogin = UserDefaults.standard.bool(forKey: Keys.launchAtLogin)
 
+        // Default to true (hide dock icon) for new users
+        if UserDefaults.standard.object(forKey: Keys.hideDockIcon) == nil {
+            self.hideDockIcon = true
+        } else {
+            self.hideDockIcon = UserDefaults.standard.bool(forKey: Keys.hideDockIcon)
+        }
+
         if let settingsData = UserDefaults.standard.data(forKey: Keys.defaultSettings),
            let settings = try? JSONDecoder().decode(RecordingSettings.self, from: settingsData) {
             self.defaultSettings = settings
@@ -66,6 +78,7 @@ public class SettingsManager: ObservableObject {
         UserDefaults.standard.set(defaultResolution.rawValue, forKey: Keys.defaultResolution)
         UserDefaults.standard.set(defaultFrameRate.rawValue, forKey: Keys.defaultFrameRate)
         UserDefaults.standard.set(launchAtLogin, forKey: Keys.launchAtLogin)
+        UserDefaults.standard.set(hideDockIcon, forKey: Keys.hideDockIcon)
 
         if let settingsData = try? JSONEncoder().encode(defaultSettings) {
             UserDefaults.standard.set(settingsData, forKey: Keys.defaultSettings)
@@ -82,6 +95,7 @@ public class SettingsManager: ObservableObject {
         defaultResolution = .fullHD
         defaultFrameRate = .fps30
         launchAtLogin = false
+        hideDockIcon = true
         defaultSettings = .default
     }
 }

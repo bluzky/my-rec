@@ -61,8 +61,7 @@ struct HomePageView: View {
                         recording: recording,
                         onPlay: { viewModel.playRecording(recording) },
                         onTrim: { viewModel.trimRecording(recording) },
-                        onDelete: { viewModel.deleteRecording(recording) },
-                        onShare: { viewModel.shareRecording(recording) }
+                        onDelete: { viewModel.deleteRecording(recording) }
                     )
 
                     if recording.id != viewModel.recentRecordings.last?.id {
@@ -138,7 +137,6 @@ struct HomeRecordingRowView: View {
     let onPlay: () -> Void
     let onTrim: () -> Void
     let onDelete: () -> Void
-    let onShare: () -> Void
 
     var body: some View {
         HStack(spacing: 16) {
@@ -195,7 +193,6 @@ struct HomeRecordingRowView: View {
                         NSWorkspace.shared.activateFileViewerSelecting([recording.fileURL])
                     })
                     ActionIconButton(icon: "trash", action: onDelete, hoverColor: .red)
-                    ActionIconButton(icon: "square.and.arrow.up", action: onShare)
                 }
             }
 

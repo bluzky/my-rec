@@ -91,6 +91,27 @@ class FileManagerService {
         }
     }
 
+    /// Delete a saved recording file and its thumbnail
+    /// - Parameter recording: VideoMetadata of the recording to delete
+    /// - Returns: True if deletion was successful, false otherwise
+    func deleteRecording(_ recording: VideoMetadata) async -> Bool {
+        do {
+            // Delete the video file
+            if fileManager.fileExists(atPath: recording.fileURL.path) {
+                try fileManager.removeItem(at: recording.fileURL)
+                print("🗑 Deleted video file: \(recording.filename)")
+            }
+
+            // Note: Thumbnails are stored as NSImage objects in VideoMetadata
+            // If thumbnails were saved to disk in the future, delete them here
+
+            return true
+        } catch {
+            print("❌ Failed to delete recording: \(error.localizedDescription)")
+            return false
+        }
+    }
+
     /// Get list of saved recordings from configured save directory with thumbnails
     /// - Returns: Array of VideoMetadata for all .mp4 files with generated thumbnails
     func getSavedRecordings() async throws -> [VideoMetadata] {

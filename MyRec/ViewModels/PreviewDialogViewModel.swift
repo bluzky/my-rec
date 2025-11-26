@@ -22,6 +22,7 @@ class PreviewDialogViewModel: ObservableObject {
     // MARK: - Private Properties
 
     private var statusObserver: NSKeyValueObservation?
+    private var onCloseWindow: (() -> Void)?
 
     // MARK: - Initialization
 
@@ -29,6 +30,11 @@ class PreviewDialogViewModel: ObservableObject {
         self.recording = recording
         print("🎬 Preview dialog initialized for: \(recording.filename)")
         setupPlayer()
+    }
+
+    /// Set callback to be called when window should close
+    func setOnCloseWindow(_ callback: @escaping (() -> Void)) {
+        self.onCloseWindow = callback
     }
 
     // MARK: - Playback Controls
@@ -52,34 +58,66 @@ class PreviewDialogViewModel: ObservableObject {
         )
     }
 
-    /// Share recording
-    func shareRecording() {
-        print("📤 Share recording: \(recording.filename)")
-        // TODO: Show macOS share sheet
-    }
-
     /// Show in Finder
     func showInFinder() {
         print("📂 Show in Finder: \(recording.filename)")
         NSWorkspace.shared.activateFileViewerSelecting([recording.fileURL])
     }
 
-    /// Delete recording
+    /// Delete recording with confirmation
     func deleteRecording() {
         print("🗑 Delete recording: \(recording.filename)")
-        // TODO: Show confirmation and delete
+
+        // Show confirmation alert
+        let alert = NSAlert()
+        alert.messageText = "Delete Recording"
+        alert.informativeText = "Are you sure you want to delete \"\(recording.filename)\"? This action cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+
+        // Run as modal dialog (not sheet) to avoid window reference issues
+        let response = alert.runModal()
+
+        if response == .alertFirstButtonReturn {
+            // User confirmed deletion
+            Task { @MainActor in
+                await self.performDelete()
+            }
+        }
+    }
+
+    /// Perform the actual deletion
+    private func performDelete() async {
+        let success = await FileManagerService.shared.deleteRecording(recording)
+
+        if success {
+            print("✅ Recording deleted successfully")
+
+            // Notify home page to refresh
+            NotificationCenter.default.post(
+                name: .recordingDeleted,
+                object: nil,
+                userInfo: ["recording": recording]
+            )
+
+            // Close preview window using callback
+            onCloseWindow?()
+        } else {
+            // Show error alert
+            let errorAlert = NSAlert()
+            errorAlert.messageText = "Delete Failed"
+            errorAlert.informativeText = "Could not delete \"\(recording.filename)\". Please check file permissions."
+            errorAlert.alertStyle = .warning
+            errorAlert.addButton(withTitle: "OK")
+            errorAlert.runModal()
+        }
     }
 
     /// Rename recording
     func renameRecording() {
         print("✏️ Rename recording: \(recording.filename)")
         // TODO: Show rename dialog
-    }
-
-    /// Share to device (AirDrop, etc.)
-    func shareToDevice() {
-        print("📱 Share to device: \(recording.filename)")
-        // TODO: Show device sharing options
     }
 
     // MARK: - Private Methods
