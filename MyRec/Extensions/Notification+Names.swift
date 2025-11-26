@@ -21,4 +21,6 @@ public extension Notification.Name {
     static let closeTrim = Notification.Name("closeTrim")
     static let showDashboard = Notification.Name("showDashboard")
     static let recordingSaved = Notification.Name("recordingSaved")
+    static let countdownStarted = Notification.Name("countdownStarted")
+    static let cancelCountdown = Notification.Name("cancelCountdown")
 }
