@@ -23,6 +23,7 @@ let package = Package(
                 "Models/VideoMetadata.swift",
                 "Models/ResizeHandle.swift",
                 "Models/MockRecording.swift",
+                "Models/KeyboardShortcut.swift",
                 "Services/Settings/SettingsManager.swift",
                 "Services/Permissions/PermissionManager.swift",
                 "Services/StatusBar/StatusBarController.swift",
@@ -49,7 +50,8 @@ let package = Package(
                 "Views/RegionSelection/CountdownOverlay.swift",
                 "Views/Settings/SettingsBarView.swift",
                 "Views/Settings/SettingsDialogView.swift",
-                "Views/Components/AudioLevelIndicator.swift"
+                "Views/Components/AudioLevelIndicator.swift",
+                "Views/Components/KeyboardShortcutRecorder.swift"
             ],
             cSettings: [
                 .define("SWIFT_PACKAGE")
