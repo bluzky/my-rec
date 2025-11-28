@@ -199,6 +199,10 @@ public class StatusBarController: NSObject, ObservableObject {
             action: #selector(recordScreen),
             keyEquivalent: ""
         )
+        recordMenuItem?.attributedTitle = NSAttributedString(
+            string: "Start Recording",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)]
+        )
         recordMenuItem?.target = self
         recordMenuItem?.image = NSImage(systemSymbolName: "record.circle", accessibilityDescription: "Record")
         menu?.addItem(recordMenuItem!)
@@ -211,6 +215,10 @@ public class StatusBarController: NSObject, ObservableObject {
             action: #selector(showDashboard),
             keyEquivalent: ""
         )
+        dashboardMenuItem.attributedTitle = NSAttributedString(
+            string: "Dashboard",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)]
+        )
         dashboardMenuItem.target = self
         dashboardMenuItem.image = NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Dashboard")
         menu?.addItem(dashboardMenuItem)
@@ -220,6 +228,10 @@ public class StatusBarController: NSObject, ObservableObject {
             title: "Settings",
             action: #selector(openSettings),
             keyEquivalent: ","
+        )
+        settingsMenuItem.attributedTitle = NSAttributedString(
+            string: "Settings",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)]
         )
         settingsMenuItem.target = self
         settingsMenuItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
@@ -233,6 +245,10 @@ public class StatusBarController: NSObject, ObservableObject {
             action: #selector(showAbout),
             keyEquivalent: ""
         )
+        aboutMenuItem.attributedTitle = NSAttributedString(
+            string: "About",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)]
+        )
         aboutMenuItem.target = self
         aboutMenuItem.image = NSImage(systemSymbolName: "info.circle", accessibilityDescription: "About")
         menu?.addItem(aboutMenuItem)
@@ -242,6 +258,10 @@ public class StatusBarController: NSObject, ObservableObject {
             title: "Quit",
             action: #selector(quit),
             keyEquivalent: "q"
+        )
+        quitMenuItem.attributedTitle = NSAttributedString(
+            string: "Quit",
+            attributes: [.font: NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)]
         )
         quitMenuItem.target = self
         quitMenuItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Quit")

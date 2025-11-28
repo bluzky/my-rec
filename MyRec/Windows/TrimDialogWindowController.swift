@@ -23,7 +23,7 @@ class TrimDialogWindowController: NSWindowController {
         self.viewModel = viewModel
 
         // Create SwiftUI view
-        let trimView = TrimDialogView(viewModel: viewModel)
+        let trimView = TrimDialogView(viewModel: viewModel).applyMonoFont()
         let hostingController = NSHostingController(rootView: trimView)
 
         // Set content view controller
@@ -54,6 +54,7 @@ class TrimDialogWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.level = .floating
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        window.title = "Trim Video"
 
         // Compact title bar settings
         window.titlebarSeparatorStyle = .none

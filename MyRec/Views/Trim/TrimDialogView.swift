@@ -203,7 +203,8 @@ struct TrimDialogView: View {
                 .frame(width: 300)
 
             Text("\(Int(viewModel.trimProgress * 100))%")
-                .font(.system(.body, design: .monospaced))
+                .font(.body)
+                .monospacedDigit()
                 .foregroundColor(.secondary)
 
             Text("Saving trimmed video...")

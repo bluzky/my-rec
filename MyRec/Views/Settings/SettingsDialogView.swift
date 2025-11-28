@@ -65,7 +65,7 @@ struct SettingsDialogView: View {
 
                 if showingPathError {
                     Text(pathErrorMessage)
-                        .font(.caption)
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.leading, 152) // Align with text field
@@ -84,7 +84,7 @@ struct SettingsDialogView: View {
 
                 if showingLaunchError {
                     Text(launchErrorMessage)
-                        .font(.caption)
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.leading, 152) // Align with toggle
@@ -147,7 +147,7 @@ struct SettingsDialogView: View {
                     Toggle("Remember last manual region", isOn: $settingsManager.rememberLastManualRegion)
                 }
                 Text("When enabled, the last manually selected region is pre-filled next time you open region selection.")
-                    .font(.caption)
+                    .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.secondary)
                     .padding(.leading, 152)
             }
@@ -206,7 +206,7 @@ struct SettingsDialogView: View {
         HStack {
             Spacer()
             Text("MyRec v1.0.0")
-                .font(.caption)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundColor(.secondary)
             Spacer()
         }

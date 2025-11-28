@@ -28,7 +28,7 @@ class FloatingRecordingControlWindow: NSWindow {
         self.viewModel = FloatingRecordingControlViewModel()
 
         // Create the SwiftUI view
-        let contentView = FloatingRecordingControlView(viewModel: viewModel)
+        let contentView = FloatingRecordingControlView(viewModel: viewModel).applyMonoFont()
         let hostingController = NSHostingController(rootView: contentView)
 
         // Calculate initial position (default bottom right corner)

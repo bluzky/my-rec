@@ -34,6 +34,7 @@ let package = Package(
                 "Services/Recording/ScreenCaptureEngine.swift",
                 "Services/Recording/VideoEncoder.swift",
                 "Extensions/Notification+Names.swift",
+                "Extensions/View+MonoFont.swift",
                 "ViewModels/RegionSelectionViewModel.swift",
                 "ViewModels/TrimDialogViewModel.swift",
                 "ViewModels/PreviewDialogViewModel.swift",

@@ -51,6 +51,7 @@ public class RegionSelectionWindow: NSWindow {
             // Closure for when user wants to close the window
             self?.hide()
         }
+        .applyMonoFont()
         self.contentView = NSHostingView(rootView: contentView)
 
         // Set up escape key monitoring

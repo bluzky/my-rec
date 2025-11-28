@@ -78,15 +78,15 @@ struct HomePageView: View {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "video.slash")
-                .font(.system(size: 48))
+                .font(.system(size: 48, design: .monospaced))
                 .foregroundColor(.secondary)
 
             Text("No Recordings Yet")
-                .font(.title3)
+                .font(.system(.title3, design: .monospaced))
                 .fontWeight(.medium)
 
             Text("Click the button above to start your first recording")
-                .font(.body)
+                .font(.system(.body, design: .monospaced))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
