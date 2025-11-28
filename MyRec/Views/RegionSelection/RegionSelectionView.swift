@@ -167,10 +167,11 @@ struct RegionSelectionView: View {
     /// Convert global screen coordinates to the SwiftUI overlay coordinate space
     private func convertScreenToSwiftUICoordinates(_ screenRect: CGRect) -> CGRect {
         let bounds = viewModel.screenBounds
+        let origin = convertScreenPointToSwiftUI(screenRect.origin, relativeTo: bounds)
 
         return CGRect(
-            x: screenRect.origin.x - bounds.origin.x,
-            y: bounds.maxY - screenRect.origin.y - screenRect.height,
+            x: origin.x,
+            y: origin.y - screenRect.height,
             width: screenRect.width,
             height: screenRect.height
         )
@@ -178,8 +179,15 @@ struct RegionSelectionView: View {
 
     /// Convert a global screen point to the SwiftUI overlay coordinate space
     private func convertScreenPointToSwiftUICoordinates(_ screenPoint: CGPoint) -> CGPoint {
-        let bounds = viewModel.screenBounds
+        return convertScreenPointToSwiftUI(screenPoint, relativeTo: viewModel.screenBounds)
+    }
 
+    /// Unified helper to convert screen coordinates to SwiftUI coordinate space
+    /// - Parameters:
+    ///   - screenPoint: Point in global screen coordinates (macOS coordinate system)
+    ///   - bounds: The screen bounds to convert relative to
+    /// - Returns: Point in SwiftUI coordinate space (top-left origin, y increases downward)
+    private func convertScreenPointToSwiftUI(_ screenPoint: CGPoint, relativeTo bounds: CGRect) -> CGPoint {
         return CGPoint(
             x: screenPoint.x - bounds.origin.x,
             y: bounds.maxY - screenPoint.y
@@ -237,17 +245,16 @@ struct CrosshairGuideView: View {
     var body: some View {
         GeometryReader { geometry in
             // Clamp to view bounds to avoid drawing outside the overlay
-            let clampedX = min(max(position.x, 0), geometry.size.width)
-            let clampedY = min(max(position.y, 0), geometry.size.height)
+            let clampedPosition = clampToSize(position, in: geometry.size)
 
             Path { path in
                 // Vertical line
-                path.move(to: CGPoint(x: clampedX, y: 0))
-                path.addLine(to: CGPoint(x: clampedX, y: geometry.size.height))
+                path.move(to: CGPoint(x: clampedPosition.x, y: 0))
+                path.addLine(to: CGPoint(x: clampedPosition.x, y: geometry.size.height))
 
                 // Horizontal line
-                path.move(to: CGPoint(x: 0, y: clampedY))
-                path.addLine(to: CGPoint(x: geometry.size.width, y: clampedY))
+                path.move(to: CGPoint(x: 0, y: clampedPosition.y))
+                path.addLine(to: CGPoint(x: geometry.size.width, y: clampedPosition.y))
             }
             .stroke(Color.blue.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [5, 5]))
             .overlay(
@@ -258,7 +265,7 @@ struct CrosshairGuideView: View {
                             .fill(Color.blue.opacity(0.35))
                     )
                     .frame(width: 8, height: 8)
-                    .position(x: clampedX, y: clampedY)
+                    .position(clampedPosition)
             )
         }
     }
@@ -272,18 +279,26 @@ struct HairlineGuideView: View {
     var body: some View {
         GeometryReader { geometry in
             Path { path in
+                // Only draw hairlines for edge handles, not corners
+                guard handle.isEdge else {
+                    assertionFailure("HairlineGuideView should only be used with edge handles, got: \(handle)")
+                    return
+                }
+
                 switch handle {
                 case .middleLeft, .middleRight:
                     let x = handle == .middleLeft ? region.minX : region.maxX
-                    let clampedX = min(max(x, 0), geometry.size.width)
+                    let clampedX = clampValue(x, min: 0, max: geometry.size.width)
                     path.move(to: CGPoint(x: clampedX, y: 0))
                     path.addLine(to: CGPoint(x: clampedX, y: geometry.size.height))
                 case .topCenter, .bottomCenter:
                     let y = handle == .topCenter ? region.minY : region.maxY
-                    let clampedY = min(max(y, 0), geometry.size.height)
+                    let clampedY = clampValue(y, min: 0, max: geometry.size.height)
                     path.move(to: CGPoint(x: 0, y: clampedY))
                     path.addLine(to: CGPoint(x: geometry.size.width, y: clampedY))
-                default:
+                case .topLeft, .topRight, .bottomLeft, .bottomRight:
+                    // Corner handles should not show hairlines
+                    assertionFailure("HairlineGuideView received a corner handle: \(handle)")
                     break
                 }
             }
@@ -291,6 +306,32 @@ struct HairlineGuideView: View {
         }
     }
 }
+
+// MARK: - Helper Functions
+
+/// Clamp a single value to a range
+/// - Parameters:
+///   - value: The value to clamp
+///   - min: Minimum allowed value
+///   - max: Maximum allowed value
+/// - Returns: The clamped value
+private func clampValue(_ value: CGFloat, min: CGFloat, max: CGFloat) -> CGFloat {
+    return Swift.min(Swift.max(value, min), max)
+}
+
+/// Clamp a point to fit within a given size
+/// - Parameters:
+///   - point: The point to clamp
+///   - size: The size bounds
+/// - Returns: A point with x and y clamped to [0, size.width] and [0, size.height]
+private func clampToSize(_ point: CGPoint, in size: CGSize) -> CGPoint {
+    return CGPoint(
+        x: clampValue(point.x, min: 0, max: size.width),
+        y: clampValue(point.y, min: 0, max: size.height)
+    )
+}
+
+// MARK: - Extensions
 
 // Make ResizeHandle conform to Hashable for ForEach
 extension ResizeHandle: Hashable {

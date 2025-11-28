@@ -10,13 +10,18 @@ enum ResizeHandle: CaseIterable {
         switch self {
         case .topLeft, .topRight, .bottomLeft, .bottomRight:
             return true
-        default:
+        case .topCenter, .middleLeft, .middleRight, .bottomCenter:
             return false
         }
     }
 
     var isEdge: Bool {
-        return !isCorner
+        switch self {
+        case .topCenter, .middleLeft, .middleRight, .bottomCenter:
+            return true
+        case .topLeft, .topRight, .bottomLeft, .bottomRight:
+            return false
+        }
     }
 
     /// The appropriate cursor for each resize handle

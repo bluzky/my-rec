@@ -368,4 +368,233 @@ class RegionSelectionViewModelTests: XCTestCase {
 
         XCTAssertEqual(result, updated)
     }
+
+    // MARK: - Cursor Location Tests
+
+    func testCursorLocation_InitiallyNil() {
+        // Cursor location should be nil on initialization
+        XCTAssertNil(viewModel.cursorLocation, "cursorLocation should be nil on initialization")
+    }
+
+    func testCursorLocation_SetDuringDrag() {
+        // Setup: start a drag operation
+        let startLocation = CGPoint(x: 100, y: 100)
+        let dragValue = makeDragValue(translation: .zero, location: startLocation)
+
+        viewModel.handleDragStarted(dragValue)
+
+        // Verify cursor location is set
+        XCTAssertNotNil(viewModel.cursorLocation, "cursorLocation should be set during drag")
+        XCTAssertEqual(viewModel.cursorLocation?.x, startLocation.x, accuracy: 0.01)
+        XCTAssertEqual(viewModel.cursorLocation?.y, startLocation.y, accuracy: 0.01)
+    }
+
+    func testCursorLocation_UpdatedDuringDragChanged() {
+        // Setup: start a drag
+        let startLocation = CGPoint(x: 100, y: 100)
+        let startValue = makeDragValue(translation: .zero, location: startLocation)
+        viewModel.handleDragStarted(startValue)
+
+        // Simulate drag movement
+        let newLocation = CGPoint(x: 200, y: 150)
+        let changeValue = makeDragValue(translation: CGSize(width: 100, height: 50), location: newLocation)
+        viewModel.handleDragChanged(changeValue)
+
+        // Verify cursor location is updated
+        XCTAssertNotNil(viewModel.cursorLocation)
+        XCTAssertEqual(viewModel.cursorLocation?.x, newLocation.x, accuracy: 0.01)
+        XCTAssertEqual(viewModel.cursorLocation?.y, newLocation.y, accuracy: 0.01)
+    }
+
+    func testCursorLocation_ClearedOnDragEnd() {
+        // Setup: perform a complete drag operation
+        let startLocation = CGPoint(x: 100, y: 100)
+        let endLocation = CGPoint(x: 400, y: 300)
+
+        let startValue = makeDragValue(translation: .zero, location: startLocation)
+        viewModel.handleDragStarted(startValue)
+
+        let endValue = makeDragValue(translation: CGSize(width: 300, height: 200), location: endLocation)
+        viewModel.handleDragEnded(endValue)
+
+        // Verify cursor location is cleared
+        XCTAssertNil(viewModel.cursorLocation, "cursorLocation should be cleared after drag ends")
+    }
+
+    func testCursorLocation_ClearedOnReset() {
+        // Setup: set cursor location manually
+        let location = CGPoint(x: 150, y: 200)
+        let dragValue = makeDragValue(translation: .zero, location: location)
+        viewModel.handleDragStarted(dragValue)
+
+        XCTAssertNotNil(viewModel.cursorLocation)
+
+        // Reset the view model
+        viewModel.reset()
+
+        // Verify cursor location is cleared
+        XCTAssertNil(viewModel.cursorLocation, "cursorLocation should be cleared on reset")
+    }
+
+    func testCursorLocation_TrackedThroughoutDrag() {
+        // Setup: perform multiple drag updates
+        let locations = [
+            CGPoint(x: 100, y: 100),
+            CGPoint(x: 150, y: 120),
+            CGPoint(x: 200, y: 140),
+            CGPoint(x: 250, y: 160)
+        ]
+
+        // Start drag
+        let startValue = makeDragValue(translation: .zero, location: locations[0])
+        viewModel.handleDragStarted(startValue)
+
+        // Update through multiple positions
+        for (index, location) in locations.enumerated() where index > 0 {
+            let translation = CGSize(
+                width: location.x - locations[0].x,
+                height: location.y - locations[0].y
+            )
+            let changeValue = makeDragValue(translation: translation, location: location)
+            viewModel.handleDragChanged(changeValue)
+
+            // Verify cursor location is updated at each step
+            XCTAssertNotNil(viewModel.cursorLocation)
+            XCTAssertEqual(viewModel.cursorLocation?.x, location.x, accuracy: 0.01)
+            XCTAssertEqual(viewModel.cursorLocation?.y, location.y, accuracy: 0.01)
+        }
+    }
+
+    // MARK: - Active Resize Handle Tests
+
+    func testActiveResizeHandle_InitiallyNil() {
+        // Active resize handle should be nil on initialization
+        XCTAssertNil(viewModel.activeResizeHandle, "activeResizeHandle should be nil on initialization")
+    }
+
+    func testActiveResizeHandle_SetDuringResizeStart() {
+        // Setup: start a resize operation
+        let handle = ResizeHandle.bottomRight
+        let initialRegion = CGRect(x: 100, y: 100, width: 300, height: 200)
+        viewModel.selectedRegion = initialRegion
+
+        let dragValue = makeDragValue(translation: .zero, location: CGPoint(x: 400, y: 300))
+        viewModel.handleResizeStarted(handle, dragValue: dragValue)
+
+        // Verify active resize handle is set
+        XCTAssertNotNil(viewModel.activeResizeHandle, "activeResizeHandle should be set during resize")
+        XCTAssertEqual(viewModel.activeResizeHandle, handle, "activeResizeHandle should match the dragged handle")
+    }
+
+    func testActiveResizeHandle_MaintainedDuringResize() {
+        // Setup: start a resize operation
+        let handle = ResizeHandle.topLeft
+        let initialRegion = CGRect(x: 200, y: 200, width: 400, height: 300)
+        viewModel.selectedRegion = initialRegion
+
+        let startValue = makeDragValue(translation: .zero, location: CGPoint(x: 200, y: 200))
+        viewModel.handleResizeStarted(handle, dragValue: startValue)
+
+        XCTAssertEqual(viewModel.activeResizeHandle, handle)
+
+        // Simulate resize movement
+        let changeValue = makeDragValue(translation: CGSize(width: 50, height: 60), location: CGPoint(x: 250, y: 260))
+        viewModel.handleResizeChanged(handle, dragValue: changeValue)
+
+        // Verify active resize handle is still set
+        XCTAssertNotNil(viewModel.activeResizeHandle)
+        XCTAssertEqual(viewModel.activeResizeHandle, handle, "activeResizeHandle should remain during resize")
+    }
+
+    func testActiveResizeHandle_ClearedOnResizeEnd() {
+        // Setup: perform a complete resize operation
+        let handle = ResizeHandle.middleRight
+        let initialRegion = CGRect(x: 100, y: 100, width: 300, height: 200)
+        viewModel.selectedRegion = initialRegion
+
+        let startValue = makeDragValue(translation: .zero, location: CGPoint(x: 400, y: 200))
+        viewModel.handleResizeStarted(handle, dragValue: startValue)
+
+        XCTAssertEqual(viewModel.activeResizeHandle, handle)
+
+        let endValue = makeDragValue(translation: CGSize(width: 100, height: 0), location: CGPoint(x: 500, y: 200))
+        viewModel.handleResizeEnded(handle, dragValue: endValue)
+
+        // Verify active resize handle is cleared
+        XCTAssertNil(viewModel.activeResizeHandle, "activeResizeHandle should be cleared after resize ends")
+    }
+
+    func testActiveResizeHandle_ClearedOnReset() {
+        // Setup: set active resize handle manually
+        let handle = ResizeHandle.bottomCenter
+        let initialRegion = CGRect(x: 100, y: 100, width: 400, height: 300)
+        viewModel.selectedRegion = initialRegion
+
+        let dragValue = makeDragValue(translation: .zero, location: CGPoint(x: 300, y: 400))
+        viewModel.handleResizeStarted(handle, dragValue: dragValue)
+
+        XCTAssertNotNil(viewModel.activeResizeHandle)
+
+        // Reset the view model
+        viewModel.reset()
+
+        // Verify active resize handle is cleared
+        XCTAssertNil(viewModel.activeResizeHandle, "activeResizeHandle should be cleared on reset")
+    }
+
+    func testActiveResizeHandle_DifferentHandles() {
+        // Test that different handles can be set as active
+        let handles: [ResizeHandle] = [
+            .topLeft, .topCenter, .topRight,
+            .middleLeft, .middleRight,
+            .bottomLeft, .bottomCenter, .bottomRight
+        ]
+
+        let initialRegion = CGRect(x: 200, y: 200, width: 400, height: 300)
+        viewModel.selectedRegion = initialRegion
+
+        for handle in handles {
+            // Start resize with this handle
+            let position = handle.position(in: initialRegion)
+            let dragValue = makeDragValue(translation: .zero, location: position)
+            viewModel.handleResizeStarted(handle, dragValue: dragValue)
+
+            // Verify this handle is active
+            XCTAssertEqual(viewModel.activeResizeHandle, handle, "activeResizeHandle should be \(handle)")
+
+            // End resize
+            viewModel.handleResizeEnded(handle, dragValue: dragValue)
+            XCTAssertNil(viewModel.activeResizeHandle, "activeResizeHandle should be cleared")
+        }
+    }
+
+    func testActiveResizeHandle_OnlySetDuringResize() {
+        // Verify that activeResizeHandle is only set during resize, not during drag
+        let dragValue = makeDragValue(translation: .zero, location: CGPoint(x: 100, y: 100))
+
+        // Start drag (not resize)
+        viewModel.handleDragStarted(dragValue)
+
+        // Verify active resize handle is NOT set
+        XCTAssertNil(viewModel.activeResizeHandle, "activeResizeHandle should not be set during drag operations")
+
+        // End drag
+        viewModel.handleDragEnded(dragValue)
+        XCTAssertNil(viewModel.activeResizeHandle)
+    }
+
+    // MARK: - Test Helpers
+
+    /// Create a mock DragGesture.Value for testing
+    private func makeDragValue(translation: CGSize, location: CGPoint) -> DragGesture.Value {
+        return DragGesture.Value(
+            time: Date(),
+            location: location,
+            startLocation: location,
+            velocity: .zero,
+            translation: translation,
+            predictedEndLocation: location,
+            predictedEndTranslation: translation
+        )
+    }
 }
