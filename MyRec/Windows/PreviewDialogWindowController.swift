@@ -20,7 +20,7 @@ class PreviewDialogWindowController: NSWindowController, NSWindowDelegate {
 
         // Create the SwiftUI view
         let previewDialogView = PreviewDialogView(viewModel: viewModel)
-        let hostingController = NSHostingController(rootView: previewDialogView)
+        let hostingController = NSHostingController(rootView: previewDialogView.applyMonoFont())
 
         // Create the window
         let window = NSWindow(contentViewController: hostingController)
@@ -30,6 +30,7 @@ class PreviewDialogWindowController: NSWindowController, NSWindowDelegate {
         window.styleMask = [NSWindow.StyleMask.titled, NSWindow.StyleMask.closable, NSWindow.StyleMask.resizable, NSWindow.StyleMask.miniaturizable]
         window.isReleasedWhenClosed = true // Release when closed
         window.center()
+        window.title = recording.filename
 
         // Set minimum size
         window.minSize = NSSize(width: 600, height: 400)

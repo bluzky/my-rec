@@ -25,7 +25,7 @@ public class SettingsWindowController {
         }
 
         // Create new window
-        let contentView = SettingsDialogView(settingsManager: settingsManager)
+        let contentView = SettingsDialogView(settingsManager: settingsManager).applyMonoFont()
         let hostingController = NSHostingController(rootView: contentView)
 
         let newWindow = NSWindow(contentViewController: hostingController)
@@ -36,6 +36,7 @@ public class SettingsWindowController {
         newWindow.center()
         newWindow.setFrameAutosaveName("SettingsWindow")
         newWindow.isMovableByWindowBackground = true
+        newWindow.title = "Settings"
 
         // Remove minimize and zoom buttons
         newWindow.standardWindowButton(.miniaturizeButton)?.isHidden = true

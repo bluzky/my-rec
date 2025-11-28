@@ -2,7 +2,7 @@
 //  SettingsDialogView.swift
 //  MyRec
 //
-//  Simple settings dialog for app preferences
+//  Settings dialog with tabbed layout (General, Recording, Shortcuts)
 //
 
 import SwiftUI
@@ -19,156 +19,22 @@ struct SettingsDialogView: View {
     @State private var launchErrorMessage = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Top spacer for title spacing
-            Spacer()
-                .frame(height: 40)
+        TabView {
+            generalTab
+                .padding(.top, 12)
+                .tabItem { Text("General") }
 
-            // Content
-            VStack(alignment: .leading, spacing: 24) {
-                // Save Location
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 12) {
-                        Text("Save Location:")
-                            .frame(width: 140, alignment: .trailing)
-                        TextField("", text: $saveLocation)
-                            .textFieldStyle(.roundedBorder)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(showingPathError ? Color.red : Color.clear, lineWidth: 1)
-                            )
-                        Button(action: chooseSaveLocation) {
-                            Image(systemName: "folder")
-                        }
-                    }
+            recordingTab
+                .padding(.top, 12)
+                .tabItem { Text("Recording") }
 
-                    if showingPathError {
-                        Text(pathErrorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 152) // Align with text field
-                    }
-                }
-
-                Divider()
-
-                // Startup
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 12) {
-                        Text("Startup:")
-                            .frame(width: 140, alignment: .trailing)
-                        Toggle("Start at login", isOn: $launchAtLogin)
-                    }
-
-                    if showingLaunchError {
-                        Text(launchErrorMessage)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.leading, 152) // Align with toggle
-                    }
-                }
-
-                Divider()
-
-                // Dock Icon
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 12) {
-                        Text("Dock Icon:")
-                            .frame(width: 140, alignment: .trailing)
-                        Toggle("Hide from dock when dashboard closed", isOn: $settingsManager.hideDockIcon)
-                    }
-                }
-
-                Divider()
-
-                // Resolution & FPS
-                HStack(spacing: 12) {
-                    Text("Default Quality:")
-                        .frame(width: 140, alignment: .trailing)
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            Text("Resolution:")
-                                .foregroundColor(.secondary)
-                            Picker("", selection: $settingsManager.defaultResolution) {
-                                ForEach(Resolution.allCases, id: \.self) { resolution in
-                                    Text(resolution.rawValue).tag(resolution)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .frame(width: 100)
-                        }
-                        HStack(spacing: 8) {
-                            Text("Frame Rate:")
-                                .foregroundColor(.secondary)
-                            Picker("", selection: $settingsManager.defaultFrameRate) {
-                                ForEach(FrameRate.allCases, id: \.self) { fps in
-                                    Text(fps.displayName).tag(fps)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .frame(width: 100)
-                        }
-                    }
-                }
-
-                Divider()
-
-                // Keyboard Shortcuts
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 12) {
-                        Text("Start/Pause Recording:")
-                            .frame(width: 180, alignment: .trailing)
-                        KeyboardShortcutRecorder(
-                            action: .startPauseRecording,
-                            shortcut: Binding(
-                                get: { settingsManager.keyboardShortcuts[.startPauseRecording] ?? KeyboardShortcut.defaults[.startPauseRecording]! },
-                                set: { settingsManager.keyboardShortcuts[.startPauseRecording] = $0 }
-                            )
-                        )
-                    }
-
-                    HStack(spacing: 12) {
-                        Text("Stop Recording:")
-                            .frame(width: 180, alignment: .trailing)
-                        KeyboardShortcutRecorder(
-                            action: .stopRecording,
-                            shortcut: Binding(
-                                get: { settingsManager.keyboardShortcuts[.stopRecording] ?? KeyboardShortcut.defaults[.stopRecording]! },
-                                set: { settingsManager.keyboardShortcuts[.stopRecording] = $0 }
-                            )
-                        )
-                    }
-
-                    HStack(spacing: 12) {
-                        Text("Open Settings:")
-                            .frame(width: 180, alignment: .trailing)
-                        KeyboardShortcutRecorder(
-                            action: .openSettings,
-                            shortcut: Binding(
-                                get: { settingsManager.keyboardShortcuts[.openSettings] ?? KeyboardShortcut.defaults[.openSettings]! },
-                                set: { settingsManager.keyboardShortcuts[.openSettings] = $0 }
-                            )
-                        )
-                    }
-                }
-
-                Spacer()
-
-                // Version info
-                HStack {
-                    Spacer()
-                    Text("MyRec v1.0.0")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, 30)
-            .padding(.bottom, 30)
+            shortcutsTab
+                .padding(.top, 12)
+                .tabItem { Text("Shortcuts") }
         }
-        .frame(width: 500, height: 500)
+        .padding(.horizontal, 30)
+        .padding(.vertical, 24)
+        .frame(width: 560, height: 540)
         .onAppear(perform: loadSettings)
         .onChange(of: saveLocation) { _ in saveSettings() }
         .onChange(of: launchAtLogin) { _ in saveSettings() }
@@ -176,6 +42,177 @@ struct SettingsDialogView: View {
             refreshKeyboardShortcuts()
         }
     }
+
+    // MARK: - Tabs
+
+    private var generalTab: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Save Location
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Text("Save Location:")
+                        .frame(width: 140, alignment: .trailing)
+                    TextField("", text: $saveLocation)
+                        .textFieldStyle(.roundedBorder)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(showingPathError ? Color.red : Color.clear, lineWidth: 1)
+                        )
+                    Button(action: chooseSaveLocation) {
+                        Image(systemName: "folder")
+                    }
+                }
+
+                if showingPathError {
+                    Text(pathErrorMessage)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 152) // Align with text field
+                }
+            }
+
+            Divider()
+
+            // Startup
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Text("Startup:")
+                        .frame(width: 140, alignment: .trailing)
+                    Toggle("Start at login", isOn: $launchAtLogin)
+                }
+
+                if showingLaunchError {
+                    Text(launchErrorMessage)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 152) // Align with toggle
+                }
+            }
+
+            Divider()
+
+            // Dock Icon
+            HStack(spacing: 12) {
+                Text("Dock Icon:")
+                    .frame(width: 140, alignment: .trailing)
+                Toggle("Hide from dock when dashboard closed", isOn: $settingsManager.hideDockIcon)
+            }
+
+            Spacer()
+            versionFooter
+        }
+    }
+
+    private var recordingTab: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Default quality
+            HStack(spacing: 12) {
+                Text("Default Quality:")
+                    .frame(width: 140, alignment: .trailing)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Text("Resolution:")
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $settingsManager.defaultResolution) {
+                            ForEach(Resolution.allCases, id: \.self) { resolution in
+                                Text(resolution.rawValue).tag(resolution)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                    HStack(spacing: 8) {
+                        Text("Frame Rate:")
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $settingsManager.defaultFrameRate) {
+                            ForEach(FrameRate.allCases, id: \.self) { fps in
+                                Text(fps.displayName).tag(fps)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
+                    }
+                }
+            }
+
+            Divider()
+
+            // Region memory
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Text("Region Selection:")
+                        .frame(width: 140, alignment: .trailing)
+                    Toggle("Remember last manual region", isOn: $settingsManager.rememberLastManualRegion)
+                }
+                Text("When enabled, the last manually selected region is pre-filled next time you open region selection.")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 152)
+            }
+
+            Spacer()
+            versionFooter
+        }
+    }
+
+    private var shortcutsTab: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Text("Start/Pause Recording:")
+                        .frame(width: 180, alignment: .trailing)
+                    KeyboardShortcutRecorder(
+                        action: .startPauseRecording,
+                        shortcut: Binding(
+                            get: { settingsManager.keyboardShortcuts[.startPauseRecording] ?? KeyboardShortcut.defaults[.startPauseRecording]! },
+                            set: { settingsManager.keyboardShortcuts[.startPauseRecording] = $0 }
+                        )
+                    )
+                }
+
+                HStack(spacing: 12) {
+                    Text("Stop Recording:")
+                        .frame(width: 180, alignment: .trailing)
+                    KeyboardShortcutRecorder(
+                        action: .stopRecording,
+                        shortcut: Binding(
+                            get: { settingsManager.keyboardShortcuts[.stopRecording] ?? KeyboardShortcut.defaults[.stopRecording]! },
+                            set: { settingsManager.keyboardShortcuts[.stopRecording] = $0 }
+                        )
+                    )
+                }
+
+                HStack(spacing: 12) {
+                    Text("Open Settings:")
+                        .frame(width: 180, alignment: .trailing)
+                    KeyboardShortcutRecorder(
+                        action: .openSettings,
+                        shortcut: Binding(
+                            get: { settingsManager.keyboardShortcuts[.openSettings] ?? KeyboardShortcut.defaults[.openSettings]! },
+                            set: { settingsManager.keyboardShortcuts[.openSettings] = $0 }
+                        )
+                    )
+                }
+            }
+
+            Spacer()
+            versionFooter
+        }
+    }
+
+    private var versionFooter: some View {
+        HStack {
+            Spacer()
+            Text("MyRec v1.0.0")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+    }
+
+    // MARK: - Helpers
 
     private func loadSettings() {
         saveLocation = settingsManager.savePath.path
@@ -224,10 +261,6 @@ struct SettingsDialogView: View {
         // For now, simulate the login item functionality
         // In a real implementation, this would use SMAppService (macOS 13+) or LSSharedFileList
         print("🚀 Attempting to enable launch at login for app at: \(bundleURL.path)")
-
-        // Simulate success for now - in real implementation, this would
-        // try SMAppService.addLoginItem(at: bundleURL, hide: false)
-        // or use LSSharedFileList to modify login items
 
         // Check if we're running in a proper app bundle (not Xcode preview)
         let isRunningFromBundle = Bundle.main.bundleURL.path.contains(".app")
@@ -384,3 +417,12 @@ struct SettingsDialogView: View {
 }
 
 // MARK: - Preview
+
+#if DEBUG
+struct SettingsDialogView_Previews: PreviewProvider {
+    static var previews: some View {
+        SettingsDialogView(settingsManager: SettingsManager.shared)
+            .frame(width: 560, height: 540)
+    }
+}
+#endif

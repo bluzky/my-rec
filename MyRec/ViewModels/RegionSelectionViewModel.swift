@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 /// Selection mode for region selection
-public enum SelectionMode: Equatable {
+public enum SelectionMode: String, Equatable, Codable {
     case screen    // Select entire screen
     case window    // Select a window
     case region    // Manual region selection

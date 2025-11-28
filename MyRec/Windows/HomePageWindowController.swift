@@ -16,7 +16,7 @@ class HomePageWindowController: NSWindowController {
     convenience init() {
         // Create the SwiftUI view
         let homePageView = HomePageView()
-        let hostingController = NSHostingController(rootView: homePageView)
+        let hostingController = NSHostingController(rootView: homePageView.applyMonoFont())
 
         // Create the window
         let window = NSWindow(contentViewController: hostingController)
@@ -25,6 +25,7 @@ class HomePageWindowController: NSWindowController {
         window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
         window.isReleasedWhenClosed = false // Keep window in memory
         window.center()
+        window.title = "MyRec"
 
         // Set minimum size
         window.minSize = NSSize(width: 480, height: 500)

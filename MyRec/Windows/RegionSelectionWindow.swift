@@ -43,6 +43,7 @@ public class RegionSelectionWindow: NSWindow {
 
         // Setup SwiftUI view
         setupContentView()
+        restoreLastManualRegion()
     }
 
     private func setupContentView() {
@@ -50,6 +51,7 @@ public class RegionSelectionWindow: NSWindow {
             // Closure for when user wants to close the window
             self?.hide()
         }
+        .applyMonoFont()
         self.contentView = NSHostingView(rootView: contentView)
 
         // Set up escape key monitoring
@@ -125,6 +127,18 @@ public class RegionSelectionWindow: NSWindow {
                 print("🖱 Window captures mouse events - selection mode")
             }
         }
+    }
+
+    private func restoreLastManualRegion() {
+        guard SettingsManager.shared.rememberLastManualRegion else { return }
+        guard let lastRegion = RegionSelectionStore.shared.lastManualRegion() else { return }
+
+        // Clamp to current screens to avoid restoring off-screen rectangles
+        let constrained = viewModel.constrainToScreen(lastRegion)
+        viewModel.selectionMode = .region
+        viewModel.selectedRegion = constrained
+
+        print("↩️ Restored last manual region: \(constrained)")
     }
 
     /// Show the window and activate the application
