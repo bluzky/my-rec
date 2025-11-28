@@ -49,6 +49,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize floating recording control window (hidden by default)
         floatingRecordingControlWindow = FloatingRecordingControlWindow()
 
+        // Register keyboard shortcuts
+        registerKeyboardShortcuts()
+
         // Set up notification observers
         setupNotificationObservers()
 
@@ -57,10 +60,48 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("✅ Settings window controller initialized")
         print("✅ Home page window initialized and shown")
         print("✅ Floating recording control initialized")
+        print("✅ Keyboard shortcuts registered")
         print("✅ Notification observers set up")
     }
 
+    private func registerKeyboardShortcuts() {
+        // Load shortcuts from SettingsManager and register them
+        let shortcuts = SettingsManager.shared.keyboardShortcuts
+        let success = KeyboardShortcutManager.shared.registerShortcuts(shortcuts)
+
+        if success {
+            print("✅ Keyboard shortcuts registered successfully:")
+            for (action, shortcut) in shortcuts {
+                print("  \(action.displayName): \(shortcut.displayString)")
+            }
+        } else {
+            print("⚠️ Failed to register some keyboard shortcuts")
+        }
+    }
+
     private func setupNotificationObservers() {
+        // Listen for keyboard shortcut notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleStartRecording),
+            name: KeyboardShortcutManager.Notifications.startRecording,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleStopRecording),
+            name: KeyboardShortcutManager.Notifications.stopRecording,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenSettings),
+            name: KeyboardShortcutManager.Notifications.openSettings,
+            object: nil
+        )
+
         // Listen for start recording notification to show region selection
         NotificationCenter.default.addObserver(
             self,
@@ -125,6 +166,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
 
+        print("✅ Registered observer for keyboard shortcut: startRecording")
+        print("✅ Registered observer for keyboard shortcut: stopRecording")
+        print("✅ Registered observer for keyboard shortcut: openSettings")
         print("✅ Registered observer for startRecording notification")
         print("✅ Registered observer for openSettings notification")
         print("✅ Registered observer for showDashboard notification")

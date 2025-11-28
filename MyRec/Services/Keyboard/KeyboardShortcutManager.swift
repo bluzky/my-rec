@@ -6,10 +6,7 @@ import Carbon
 /// Provides global hotkey registration using Carbon Event Manager API.
 /// Requires accessibility permission for system-wide keyboard event monitoring.
 ///
-/// Default shortcuts:
-/// - ⌘⌥1: Start/Pause recording
-/// - ⌘⌥2: Stop recording
-/// - ⌘⌥,: Open settings
+/// Supports customizable shortcuts loaded from SettingsManager.
 class KeyboardShortcutManager {
     static let shared = KeyboardShortcutManager()
 
@@ -17,6 +14,7 @@ class KeyboardShortcutManager {
 
     private var hotKeyRefs: [EventHotKeyRef?] = []
     private var eventHandler: EventHandlerRef?
+    private var shortcutMapping: [UInt32: KeyboardShortcut.Action] = [:]
 
     /// Notification names for keyboard shortcuts
     struct Notifications {
@@ -29,41 +27,17 @@ class KeyboardShortcutManager {
 
     private init() {}
 
-    // MARK: - Permission Checking
-
-    /// Checks if accessibility permission is granted
-    ///
-    /// Accessibility permission is required for global keyboard event monitoring.
-    /// - Returns: True if permission is granted, false otherwise
-    func checkAccessibilityPermission() -> Bool {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: false]
-        return AXIsProcessTrustedWithOptions(options as CFDictionary)
-    }
-
-    /// Requests accessibility permission from the user
-    ///
-    /// Shows system prompt if permission is not granted.
-    /// User must manually enable in System Settings → Privacy & Security → Accessibility.
-    func requestAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        _ = AXIsProcessTrustedWithOptions(options as CFDictionary)
-    }
-
     // MARK: - Hotkey Registration
 
-    /// Registers all default keyboard shortcuts
+    /// Registers keyboard shortcuts from SettingsManager
     ///
-    /// Default shortcuts:
-    /// - ⌘⌥1 (Cmd+Opt+1): Start/Pause recording
-    /// - ⌘⌥2 (Cmd+Opt+2): Stop recording
-    /// - ⌘⌥, (Cmd+Opt+Comma): Open settings
-    ///
+    /// Loads custom shortcuts and registers them with the system.
+    /// - Parameter shortcuts: Dictionary of shortcuts to register
     /// - Returns: True if all shortcuts registered successfully, false otherwise
     @discardableResult
-    func registerDefaultShortcuts() -> Bool {
-        guard checkAccessibilityPermission() else {
-            return false
-        }
+    func registerShortcuts(_ shortcuts: [KeyboardShortcut.Action: KeyboardShortcut]) -> Bool {
+        // Clear existing shortcuts first
+        unregisterAllShortcuts()
 
         // Install event handler
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
@@ -97,22 +71,15 @@ class KeyboardShortcutManager {
         )
 
         // Register individual hotkeys
-        let shortcuts: [(keyCode: Int, id: UInt32, notification: Notification.Name)] = [
-            (kVK_ANSI_1, 1, Notifications.startRecording),      // ⌘⌥1
-            (kVK_ANSI_2, 2, Notifications.stopRecording),       // ⌘⌥2
-            (kVK_ANSI_Comma, 3, Notifications.openSettings)     // ⌘⌥,
-        ]
-
-        for shortcut in shortcuts {
+        var hotKeyID: UInt32 = 1
+        for (action, shortcut) in shortcuts {
             var hotKeyRef: EventHotKeyRef?
-            let hotKeyID = EventHotKeyID(signature: OSType(0x4D524543), id: shortcut.id) // 'MREC'
-
-            let modifiers = UInt32(cmdKey | optionKey)
+            let eventHotKeyID = EventHotKeyID(signature: OSType(0x4D524543), id: hotKeyID) // 'MREC'
 
             let status = RegisterEventHotKey(
                 UInt32(shortcut.keyCode),
-                modifiers,
-                hotKeyID,
+                shortcut.carbonModifiers,
+                eventHotKeyID,
                 GetApplicationEventTarget(),
                 0,
                 &hotKeyRef
@@ -120,12 +87,23 @@ class KeyboardShortcutManager {
 
             if status == noErr {
                 hotKeyRefs.append(hotKeyRef)
+                shortcutMapping[hotKeyID] = action
+                hotKeyID += 1
             } else {
-                return false
+                print("⚠️ Failed to register shortcut for \(action.displayName)")
             }
         }
 
-        return true
+        return !hotKeyRefs.isEmpty
+    }
+
+    /// Registers default keyboard shortcuts
+    ///
+    /// Convenience method that loads defaults and registers them.
+    /// - Returns: True if all shortcuts registered successfully, false otherwise
+    @discardableResult
+    func registerDefaultShortcuts() -> Bool {
+        return registerShortcuts(KeyboardShortcut.defaults)
     }
 
     /// Unregisters all keyboard shortcuts
@@ -136,6 +114,7 @@ class KeyboardShortcutManager {
             }
         }
         hotKeyRefs.removeAll()
+        shortcutMapping.removeAll()
 
         if let handler = eventHandler {
             RemoveEventHandler(handler)
@@ -150,17 +129,20 @@ class KeyboardShortcutManager {
     /// Posts appropriate notification based on hotkey ID.
     /// - Parameter id: The hotkey ID that was pressed
     private func handleHotKey(id: UInt32) {
+        guard let action = shortcutMapping[id] else {
+            print("⚠️ Unknown hotkey ID: \(id)")
+            return
+        }
+
         let notification: Notification.Name
 
-        switch id {
-        case 1:
+        switch action {
+        case .startPauseRecording:
             notification = Notifications.startRecording
-        case 2:
+        case .stopRecording:
             notification = Notifications.stopRecording
-        case 3:
+        case .openSettings:
             notification = Notifications.openSettings
-        default:
-            return
         }
 
         NotificationCenter.default.post(name: notification, object: nil)

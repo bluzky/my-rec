@@ -6,6 +6,19 @@ enum ResizeHandle: CaseIterable {
     case middleLeft, middleRight
     case bottomLeft, bottomCenter, bottomRight
 
+    var isCorner: Bool {
+        switch self {
+        case .topLeft, .topRight, .bottomLeft, .bottomRight:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var isEdge: Bool {
+        return !isCorner
+    }
+
     /// The appropriate cursor for each resize handle
     var cursor: NSCursor {
         switch self {

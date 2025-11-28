@@ -7,6 +7,7 @@ public class RegionSelectionWindow: NSWindow {
     private let viewModel: RegionSelectionViewModel
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
+    private var dragMonitor: Any?
     private var recordingStateObserver: Any?
 
     /// Access to the view model for external mouse tracking
@@ -90,9 +91,16 @@ public class RegionSelectionWindow: NSWindow {
             return event // Let mouse events pass through
         }
 
+        let dragMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDragged) { [weak self] event in
+            let globalScreenPoint = NSEvent.mouseLocation
+            self?.viewModel.updateHoveredWindow(at: globalScreenPoint)
+            return event
+        }
+
         // Store monitors for cleanup
         self.keyMonitor = keyMonitor
         self.mouseMonitor = mouseMonitor
+        self.dragMonitor = dragMonitor
 
         // Listen for recording state changes to enable/disable mouse passthrough
         recordingStateObserver = NotificationCenter.default.addObserver(
@@ -123,6 +131,7 @@ public class RegionSelectionWindow: NSWindow {
     public func show() {
         self.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        viewModel.updateHoveredWindow(at: NSEvent.mouseLocation)
 
         // Note: Microphone monitoring will be started by SettingsBarView.onAppear
         // if permission is granted and toggle is enabled
@@ -153,6 +162,10 @@ public class RegionSelectionWindow: NSWindow {
         if let mouseMonitor = mouseMonitor {
             NSEvent.removeMonitor(mouseMonitor)
             self.mouseMonitor = nil
+        }
+        if let dragMonitor = dragMonitor {
+            NSEvent.removeMonitor(dragMonitor)
+            self.dragMonitor = nil
         }
         if let observer = recordingStateObserver {
             NotificationCenter.default.removeObserver(observer)

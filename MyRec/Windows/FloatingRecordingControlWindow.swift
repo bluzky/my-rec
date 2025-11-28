@@ -15,10 +15,11 @@ class FloatingRecordingControlWindow: NSWindow {
     private var viewModel: FloatingRecordingControlViewModel
     private var recordingStateObserver: Any?
     private var countdownObserver: Any?
+    private var stopRecordingObserver: Any?
+    private var cancelCountdownObserver: Any?
     private let controlSize = NSSize(width: 240, height: 60)
     private let collapsedWidth: CGFloat = 24  // Width when collapsed (just the handle)
     private let margin: CGFloat = 12  // Reduced from 20 to 12
-    private var isInsideRecordingRegion = false
     private var expandedFrame: NSRect = .zero  // Store full-size frame to restore after collapsing
     private var cancellables = Set<AnyCancellable>()
 
@@ -74,7 +75,7 @@ class FloatingRecordingControlWindow: NSWindow {
             queue: .main
         ) { [weak self] notification in
             // Get the selected region from userInfo
-            let selectedRegion = notification.userInfo?["selectedRegion"] as? CGRect
+            let selectedRegion = notification.userInfo?[NotificationUserInfoKey.selectedRegion] as? CGRect
             self?.positionAndShow(relativeTo: selectedRegion)
         }
 
@@ -99,7 +100,7 @@ class FloatingRecordingControlWindow: NSWindow {
         }
 
         // Listen for stopRecording notification
-        NotificationCenter.default.addObserver(
+        stopRecordingObserver = NotificationCenter.default.addObserver(
             forName: .stopRecording,
             object: nil,
             queue: .main
@@ -108,7 +109,7 @@ class FloatingRecordingControlWindow: NSWindow {
         }
 
         // Listen for cancelCountdown notification
-        NotificationCenter.default.addObserver(
+        cancelCountdownObserver = NotificationCenter.default.addObserver(
             forName: .cancelCountdown,
             object: nil,
             queue: .main
@@ -133,7 +134,6 @@ class FloatingRecordingControlWindow: NSWindow {
     private func positionAndShow(relativeTo selectedRegion: CGRect?) {
         guard let selectedRegion = selectedRegion else {
             // No region provided, use default position (bottom right of screen)
-            isInsideRecordingRegion = false
             viewModel.shouldShowCollapsible = false
             positionAtDefaultLocation()
             self.orderFrontRegardless()
@@ -143,7 +143,6 @@ class FloatingRecordingControlWindow: NSWindow {
 
         let screenFrame = NSScreen.main?.visibleFrame ?? .zero
         let (position, isInside) = calculateOptimalPosition(for: selectedRegion, in: screenFrame)
-        isInsideRecordingRegion = isInside
         viewModel.shouldShowCollapsible = isInside
 
         setFrameOriginAndRemember(position)
@@ -154,7 +153,7 @@ class FloatingRecordingControlWindow: NSWindow {
 
     /// Calculate the optimal position for the control bar
     /// Priority: Bottom-right → Top-right → Right side → Left side → Default
-    /// Returns: (position, isInsideRecordingRegion)
+    /// Returns: (position, isInsideSelectedRegion)
     private func calculateOptimalPosition(for region: CGRect, in screenFrame: CGRect) -> (CGPoint, Bool) {
         // Option 1: Bottom-right of selected region (preferred)
         let bottomRightY = region.minY - controlSize.height - margin
@@ -255,6 +254,12 @@ class FloatingRecordingControlWindow: NSWindow {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = countdownObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = stopRecordingObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = cancelCountdownObserver {
             NotificationCenter.default.removeObserver(observer)
         }
         cancellables.forEach { $0.cancel() }

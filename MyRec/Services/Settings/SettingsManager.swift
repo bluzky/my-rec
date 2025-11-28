@@ -28,6 +28,10 @@ public class SettingsManager: ObservableObject {
         didSet { save() }
     }
 
+    @Published var keyboardShortcuts: [KeyboardShortcut.Action: KeyboardShortcut] {
+        didSet { save() }
+    }
+
     private enum Keys {
         static let savePath = "savePath"
         static let defaultResolution = "defaultResolution"
@@ -35,6 +39,7 @@ public class SettingsManager: ObservableObject {
         static let launchAtLogin = "launchAtLogin"
         static let defaultSettings = "defaultSettings"
         static let hideDockIcon = "hideDockIcon"
+        static let keyboardShortcuts = "keyboardShortcuts"
     }
 
     public init() {
@@ -71,6 +76,14 @@ public class SettingsManager: ObservableObject {
         } else {
             self.defaultSettings = .default
         }
+
+        // Load keyboard shortcuts
+        if let shortcutsData = UserDefaults.standard.data(forKey: Keys.keyboardShortcuts),
+           let shortcuts = try? JSONDecoder().decode([KeyboardShortcut.Action: KeyboardShortcut].self, from: shortcutsData) {
+            self.keyboardShortcuts = shortcuts
+        } else {
+            self.keyboardShortcuts = KeyboardShortcut.defaults
+        }
     }
 
     func save() {
@@ -82,6 +95,10 @@ public class SettingsManager: ObservableObject {
 
         if let settingsData = try? JSONEncoder().encode(defaultSettings) {
             UserDefaults.standard.set(settingsData, forKey: Keys.defaultSettings)
+        }
+
+        if let shortcutsData = try? JSONEncoder().encode(keyboardShortcuts) {
+            UserDefaults.standard.set(shortcutsData, forKey: Keys.keyboardShortcuts)
         }
     }
 
@@ -97,5 +114,6 @@ public class SettingsManager: ObservableObject {
         launchAtLogin = false
         hideDockIcon = true
         defaultSettings = .default
+        keyboardShortcuts = KeyboardShortcut.defaults
     }
 }

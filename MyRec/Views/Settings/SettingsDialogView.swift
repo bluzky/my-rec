@@ -120,23 +120,37 @@ struct SettingsDialogView: View {
                     HStack(spacing: 12) {
                         Text("Start/Pause Recording:")
                             .frame(width: 180, alignment: .trailing)
-                        Text("⌘⌥1")
-                            .font(.system(.body, design: .monospaced))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                            .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(4)
+                        KeyboardShortcutRecorder(
+                            action: .startPauseRecording,
+                            shortcut: Binding(
+                                get: { settingsManager.keyboardShortcuts[.startPauseRecording] ?? KeyboardShortcut.defaults[.startPauseRecording]! },
+                                set: { settingsManager.keyboardShortcuts[.startPauseRecording] = $0 }
+                            )
+                        )
                     }
 
                     HStack(spacing: 12) {
                         Text("Stop Recording:")
                             .frame(width: 180, alignment: .trailing)
-                        Text("⌘⌥2")
-                            .font(.system(.body, design: .monospaced))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                            .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(4)
+                        KeyboardShortcutRecorder(
+                            action: .stopRecording,
+                            shortcut: Binding(
+                                get: { settingsManager.keyboardShortcuts[.stopRecording] ?? KeyboardShortcut.defaults[.stopRecording]! },
+                                set: { settingsManager.keyboardShortcuts[.stopRecording] = $0 }
+                            )
+                        )
+                    }
+
+                    HStack(spacing: 12) {
+                        Text("Open Settings:")
+                            .frame(width: 180, alignment: .trailing)
+                        KeyboardShortcutRecorder(
+                            action: .openSettings,
+                            shortcut: Binding(
+                                get: { settingsManager.keyboardShortcuts[.openSettings] ?? KeyboardShortcut.defaults[.openSettings]! },
+                                set: { settingsManager.keyboardShortcuts[.openSettings] = $0 }
+                            )
+                        )
                     }
                 }
 
@@ -154,10 +168,13 @@ struct SettingsDialogView: View {
             .padding(.horizontal, 30)
             .padding(.bottom, 30)
         }
-        .frame(width: 500, height: 450)
+        .frame(width: 500, height: 500)
         .onAppear(perform: loadSettings)
         .onChange(of: saveLocation) { _ in saveSettings() }
         .onChange(of: launchAtLogin) { _ in saveSettings() }
+        .onChange(of: settingsManager.keyboardShortcuts) { _ in
+            refreshKeyboardShortcuts()
+        }
     }
 
     private func loadSettings() {
@@ -358,6 +375,11 @@ struct SettingsDialogView: View {
             showingPathError = false
             pathErrorMessage = ""
         }
+    }
+
+    private func refreshKeyboardShortcuts() {
+        // Re-register shortcuts with the KeyboardShortcutManager
+        KeyboardShortcutManager.shared.registerShortcuts(settingsManager.keyboardShortcuts)
     }
 }
 
