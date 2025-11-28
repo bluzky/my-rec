@@ -24,6 +24,7 @@ let package = Package(
                 "Models/ResizeHandle.swift",
                 "Models/MockRecording.swift",
                 "Models/KeyboardShortcut.swift",
+                "Services/Settings/RegionSelectionStore.swift",
                 "Services/Settings/SettingsManager.swift",
                 "Services/Permissions/PermissionManager.swift",
                 "Services/StatusBar/StatusBarController.swift",

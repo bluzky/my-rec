@@ -139,6 +139,14 @@ struct RegionSelectionView: View {
 
         print("🎬 Countdown complete - starting recording with region: \(selectedRegion)")
 
+        // Remember last manual selection when enabled
+        if SettingsManager.shared.rememberLastManualRegion && viewModel.selectionMode == .region {
+            RegionSelectionStore.shared.save(
+                selectionMode: viewModel.selectionMode,
+                region: selectedRegion
+            )
+        }
+
         // Hide countdown, enter recording mode
         showCountdown = false
         isRecording = true

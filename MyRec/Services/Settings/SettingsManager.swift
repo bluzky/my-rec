@@ -28,6 +28,10 @@ public class SettingsManager: ObservableObject {
         didSet { save() }
     }
 
+    @Published var rememberLastManualRegion: Bool {
+        didSet { save() }
+    }
+
     @Published var keyboardShortcuts: [KeyboardShortcut.Action: KeyboardShortcut] {
         didSet { save() }
     }
@@ -40,6 +44,7 @@ public class SettingsManager: ObservableObject {
         static let defaultSettings = "defaultSettings"
         static let hideDockIcon = "hideDockIcon"
         static let keyboardShortcuts = "keyboardShortcuts"
+        static let rememberLastManualRegion = "rememberLastManualRegion"
     }
 
     public init() {
@@ -77,6 +82,13 @@ public class SettingsManager: ObservableObject {
             self.defaultSettings = .default
         }
 
+        // Remember last manual region toggle - default to false
+        if UserDefaults.standard.object(forKey: Keys.rememberLastManualRegion) == nil {
+            self.rememberLastManualRegion = false
+        } else {
+            self.rememberLastManualRegion = UserDefaults.standard.bool(forKey: Keys.rememberLastManualRegion)
+        }
+
         // Load keyboard shortcuts
         if let shortcutsData = UserDefaults.standard.data(forKey: Keys.keyboardShortcuts),
            let shortcuts = try? JSONDecoder().decode([KeyboardShortcut.Action: KeyboardShortcut].self, from: shortcutsData) {
@@ -100,6 +112,8 @@ public class SettingsManager: ObservableObject {
         if let shortcutsData = try? JSONEncoder().encode(keyboardShortcuts) {
             UserDefaults.standard.set(shortcutsData, forKey: Keys.keyboardShortcuts)
         }
+
+        UserDefaults.standard.set(rememberLastManualRegion, forKey: Keys.rememberLastManualRegion)
     }
 
     func reset() {
@@ -115,5 +129,6 @@ public class SettingsManager: ObservableObject {
         hideDockIcon = true
         defaultSettings = .default
         keyboardShortcuts = KeyboardShortcut.defaults
+        rememberLastManualRegion = false
     }
 }
